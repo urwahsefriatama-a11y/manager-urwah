@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sphereHi: { position: 'absolute', left: 30, top: 22, width: 90, height: 70, borderRadius: 45, backgroundColor: 'rgba(255,220,205,0.35)' },
-  center: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  center: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   info: { alignItems: 'center', marginTop: 18 },
   infoText: { textAlign: 'center', marginTop: 8, lineHeight: 21 },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
