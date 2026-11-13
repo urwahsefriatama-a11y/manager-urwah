@@ -1,6 +1,6 @@
 # Membuat APK otomatis.
 # - Setiap push ke main  -> APK bisa diunduh di tab Actions (bagian "Artifacts").
-# - Setiap tag v*        -> APK dilampirkan ke halaman GitHub Releases.
+# - APK juga otomatis dilampirkan ke Releases sesuai versi di app.json.
 name: Build APK
 
 on:
@@ -47,14 +47,18 @@ jobs:
           VERSION=$(node -p "require('./app.json').expo.version")
           mkdir -p out
           cp android/app/build/outputs/apk/release/app-release.apk "out/manager-urwah-v${VERSION}.apk"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
           name: manager-urwah-apk
           path: out/*.apk
 
+      # Rilis otomatis untuk versi di app.json (tag v<versi> dibuat robot sendiri).
       - name: Lampirkan ke Releases
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          name: Manager Urwah v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
           files: out/*.apk

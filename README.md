@@ -16,7 +16,7 @@ Status: **versi 0.1 — kerangka.** Perekam hadir di versi 0.2. Rencana lengkap 
 APK dibuat otomatis oleh **GitHub Actions** (robot gratis milik GitHub):
 
 - Setiap ada perubahan di cabang `main`, robot membuat APK uji. Unduh di tab **Actions** → pilih proses terbaru → bagian **Artifacts**.
-- Untuk rilis resmi: buat *tag* bernama `v0.2.0` (misalnya). Robot otomatis melampirkan APK ke halaman **Releases**.
+- Untuk versi baru: naikkan angka `version` di `app.json` (misalnya `0.2.0`). Robot otomatis membuat rilis `v0.2.0` di halaman **Releases**.
 
 ## Istilah singkat
 
