@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Manager Urwah",
+    "slug": "manager-urwah",
+    "version": "0.1.0",
+    "scheme": "managerurwah",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.urwah.manager",
+      "versionCode": 1
+    },
+    "plugins": ["expo-router"]
+  }
+}
