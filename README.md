@@ -2,7 +2,22 @@
 
 App Android pribadi: rekam rapat/kajian → transkrip (Indonesia/Arab/Inggris) → ringkasan, jumlah pembicara, tugas → pengingat (alarm, notifikasi, kalender).
 
-Status: **versi 0.1 — kerangka.** Perekam hadir di versi 0.2. Rencana lengkap ada di `docs/rancangan.md`.
+Status: **versi 0.2.** Rencana lengkap ada di `docs/rancangan.md`.
+
+### Yang sudah berfungsi di v0.2
+- **Beranda** bergaya baru: salam, lintasan matahari & waktu shalat, pengingat berikutnya, kartu fitur, tugas, alarm.
+- **Rekam**: siap → hitung mundur 3-2-1 → merekam (tetap jalan saat layar mati), tandai momen, jeda, disimpan per 30 menit.
+- **Rekaman**: daftar rekaman, putar ulang per potongan, hapus.
+- **Tugas & alarm**: tambah, centang, hapus; pengingat lewat notifikasi berbunyi.
+- **Shalat**: jadwal dari lokasi HP (dihitung di HP, tanpa internet), pengingat tiap waktu shalat.
+- **Pengaturan** berkategori, kunci Gemini disimpan terenkripsi.
+
+### Belum (ditandai jelas di app)
+Transkrip & ringkasan AI, Asisten (v0.3) · Chat WA, Pindai, Catatan (v0.4) · alarm layar penuh, widget, cadangan Google.
+
+### HP yang diuji/ditargetkan
+- **Samsung Galaxy S25 Ultra (Android 15/16):** didukung. Agar rekaman panjang & pengingat tidak dihentikan sistem: Pengaturan → Baterai → Batas penggunaan latar belakang → *Aplikasi tidak pernah tidur* → tambah Manager Urwah.
+- **Huawei MatePad Mini (HarmonyOS 5/6):** belum bisa. HarmonyOS 5 ke atas tidak menjalankan APK Android.
 
 ## Cara memasang di HP
 

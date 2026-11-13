@@ -1,11 +1,13 @@
 # Membuat APK otomatis.
 # - Setiap push ke main  -> APK bisa diunduh di tab Actions (bagian "Artifacts").
 # - APK juga otomatis dilampirkan ke Releases sesuai versi di app.json.
+# - Cabang build/** hanya uji build (tanpa rilis).
+# - Catatan build disimpan ke cabang `ci-logs` supaya mudah dibaca.
 name: Build APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'build/**']
     tags: ['v*']
   workflow_dispatch:
 
@@ -29,18 +31,28 @@ jobs:
 
       - name: Pasang paket
         run: |
-          npm install
-          npx expo install --fix
+          set -o pipefail
+          { npm install && npx expo install --fix; } 2>&1 | tee -a ci.log
 
       - name: Cek TypeScript
-        run: npx tsc --noEmit
+        run: |
+          set -o pipefail
+          npx tsc --noEmit 2>&1 | tee -a ci.log
+
+      - name: Cek kesehatan proyek (expo-doctor)
+        continue-on-error: true
+        run: npx expo-doctor 2>&1 | tee -a ci.log
 
       - name: Buat proyek Android
-        run: npx expo prebuild --platform android --clean
+        run: |
+          set -o pipefail
+          npx expo prebuild --platform android --clean 2>&1 | tee -a ci.log
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon 2>&1 | tail -n 400 | tee -a ../ci.log
 
       - name: Beri nama APK
         run: |
@@ -56,9 +68,28 @@ jobs:
 
       # Rilis otomatis untuk versi di app.json (tag v<versi> dibuat robot sendiri).
       - name: Lampirkan ke Releases
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
           name: Manager Urwah v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           files: out/*.apk
+
+      # Simpan catatan build (berhasil atau gagal) ke cabang ci-logs.
+      - name: Simpan catatan build
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          SHA=$(git rev-parse --short HEAD)
+          mkdir -p /tmp/logs && cp ci.log /tmp/logs/ci.log 2>/dev/null || echo "tidak ada log" > /tmp/logs/ci.log
+          echo "$STATUS $SHA $(date -u +%FT%TZ)" > /tmp/logs/status.txt
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git checkout --orphan ci-logs-tmp
+          git rm -rf --cached . > /dev/null
+          rm -rf ./* .github .gitignore .npmrc 2>/dev/null || true
+          cp /tmp/logs/* .
+          git add ci.log status.txt
+          git commit -m "Catatan build $SHA: $STATUS" > /dev/null
+          git push -f origin HEAD:ci-logs

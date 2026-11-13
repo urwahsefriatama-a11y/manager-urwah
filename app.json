@@ -2,14 +2,60 @@
   "expo": {
     "name": "Manager Urwah",
     "slug": "manager-urwah",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "scheme": "managerurwah",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "android": {
       "package": "com.urwah.manager",
-      "versionCode": 1
+      "versionCode": 2,
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
+      ]
     },
-    "plugins": ["expo-router"]
+    "plugins": [
+      "expo-router",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf",
+            "node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf",
+            "node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf",
+            "node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf",
+            "node_modules/@expo-google-fonts/doto/900Black/Doto_900Black.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Manager Urwah memakai mikrofon untuk merekam rapat dan kajian.",
+          "recordAudioAndroid": true,
+          "enableBackgroundRecording": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#E2793A"
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Lokasi dipakai untuk menghitung waktu shalat di tempat Anda."
+        }
+      ]
+    ],
+    "backgroundColor": "#0A0505"
   }
 }

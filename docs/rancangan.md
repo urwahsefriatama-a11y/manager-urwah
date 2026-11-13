@@ -60,3 +60,20 @@ Sambutan · Beranda · Rekam · Proses · Detail (Ringkasan/Transkrip/Pembicara/
 - Tampil di Fluid Cloud ditentukan ColorOS; cadangannya notifikasi biasa + pulau di dalam app.
 - ColorOS agresif menghemat baterai → panduan izin "Alarm & pengingat" dan aktivitas latar belakang.
 - Free tier Gemini: data boleh dipakai Google; kuota hanya terlihat di AI Studio.
+
+## Pembaruan 14 Nov 2026 (prototipe disetujui)
+Cakupan bertambah sesuai prototipe UI yang disetujui pemilik:
+- Beranda: salam, lintasan waktu shalat, pengingat berikutnya, kartu fitur, tugas, alarm, kolom tanya.
+- Asisten AI (analisa, saran, brainstorm, lampiran PDF/Markdown, pengingat apa pun, mode suara).
+- Chat WA terjadwal + template buatan sendiri · Pindai dokumen (OCR, ekspor PDF/PNG) · Catatan + analisa.
+- Shalat: jadwal dari lokasi, pengingat, (nanti) adzan, kiblat, masjid terdekat, senyap otomatis.
+- Pengaturan berkategori; widget pindah ke Pengaturan.
+- Gaya: gradasi jingga → gelap per layar, kartu kaca, angka huruf pixel (Doto), animasi masuk/keluar halus.
+
+Tabel baru (tambahan, tidak mengganti nama tabel lama):
+- `alarms`(id, hour, minute, label, repeat[once|daily], enabled, notif_id, created_at, updated_at)
+- `settings`(key, value) — pengaturan biasa. Rahasia tetap di `expo-secure-store`.
+
+Rilis bertahap: v0.2 (tampilan baru, rekam, tugas, alarm, shalat) → v0.3 (transkrip, ringkasan, asisten) → v0.4 (chat WA, pindai, catatan) → v0.5 (alarm layar penuh, widget, cadangan).
+
+Perangkat: Galaxy S25 Ultra didukung. Huawei MatePad Mini (HarmonyOS 5/6) tidak bisa memasang APK — butuh keputusan pemilik.
