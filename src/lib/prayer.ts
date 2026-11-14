@@ -117,7 +117,7 @@ export async function schedulePrayerReminders() {
     const useAdzan = mode === 'adzan' && !!file && native.available;
     if ((useAdzan || (silentMin > 0 && mode !== 'off')) && native.available) {
       const nid = `prayer-${key}-${p.at}`;
-      native.schedulePrayer(nid, p.at, `Waktu ${p.name} · ${hhmm(p.at)}`, useAdzan ? file : '', mode !== 'off' ? silentMin : 0);
+      native.schedulePrayer(nid, p.at, `Waktu ${p.name} · ${hhmm(p.at)}`, useAdzan ? file : '', silentMin);
       nids.push(nid);
     }
     // Saran masjid terdekat 10 menit sebelum Dzuhur/Ashar/Maghrib/Isya.
