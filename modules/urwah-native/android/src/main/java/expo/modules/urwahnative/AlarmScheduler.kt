@@ -87,7 +87,7 @@ object AlarmScheduler {
     ensureChannel(ctx)
     val full = PendingIntent.getActivity(ctx, id.hashCode(), launchIntent(ctx, id, title, body), flags())
     val n = NotificationCompat.Builder(ctx, CHANNEL)
-      .setSmallIcon(ctx.applicationInfo.icon)
+      .setSmallIcon(R.drawable.urwah_stat)
       .setContentTitle(title)
       .setContentText(body)
       .setCategory(NotificationCompat.CATEGORY_ALARM)

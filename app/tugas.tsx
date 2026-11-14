@@ -32,7 +32,7 @@ export default function Tugas() {
 
   return (
     <Screen bg="tasks">
-      <Header title="Tugas & Alarm" />
+      <Header title="Tugas" icon="task" />
       <FadeIn>
         <Glass style={styles.section}>
           <View style={styles.head}>

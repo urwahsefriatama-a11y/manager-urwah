@@ -9,7 +9,10 @@ import { T } from '../src/ui/T';
 import { Glass } from '../src/ui/Glass';
 import { Icon, type IconName } from '../src/ui/Icon';
 import { PressableScale } from '../src/ui/PressableScale';
-import { Field, FadeIn, Header, IconTile, PrimaryBtn, Toggle } from '../src/ui/bits';
+import { Field, FadeIn, GhostBtn, Header, IconTile, PrimaryBtn, Toggle } from '../src/ui/bits';
+import { CLAUDE_KEY } from '../src/lib/claude';
+import { speechReady, stopWake } from '../src/lib/voice';
+import { DrivePanel, IslandPanel } from '../src/ui/SettingsPanels';
 import * as Calendar from 'expo-calendar/legacy';
 import { native } from '../modules/urwah-native/src';
 import { addTerm, deleteTerm, listTerms, type Term } from '../src/data/extra';
@@ -19,18 +22,105 @@ import { color, font, radius } from '../src/ui/theme';
 import { getFlag, getSetting, resetSettings, setFlag, setSetting } from '../src/data/settings';
 import { ensurePermission } from '../src/lib/notify';
 
-type Cat = 'tampilan' | 'beranda' | 'pengingat' | 'asisten' | 'kamus' | 'widget' | 'data';
+type Cat = 'tampilan' | 'beranda' | 'pengingat' | 'pulau' | 'asisten' | 'akses' | 'drive' | 'kamus' | 'widget' | 'data';
 const CATS: { key: Cat; label: string; desc: string; icon: IconName }[] = [
   { key: 'tampilan', label: 'Tampilan', desc: 'Nama, gerak, dan getar', icon: 'set' },
   { key: 'beranda', label: 'Beranda', desc: 'Bagian yang tampil di beranda', icon: 'home' },
   { key: 'pengingat', label: 'Pengingat & izin', desc: 'Notifikasi, alarm tepat waktu, baterai', icon: 'bell' },
-  { key: 'asisten', label: 'Asisten & AI', desc: 'Kunci Gemini (disimpan terenkripsi)', icon: 'key' },
+  { key: 'pulau', label: 'Pulau & Live Update', desc: 'Pulau notifikasi di app dan di bilah status HP', icon: 'bell' },
+  { key: 'asisten', label: 'Asisten & AI', desc: 'Kunci Claude & Gemini, suara, "Halo asisten"', icon: 'spark' },
+  { key: 'akses', label: 'Data yang boleh dibaca', desc: 'Kalender, kontak, dan file untuk asisten', icon: 'key' },
+  { key: 'drive', label: 'Google Drive & cadangan', desc: 'Hubungkan Drive, cadangkan & pulihkan data', icon: 'file' },
   { key: 'kamus', label: 'Kamus istilah', desc: 'Nama & istilah agar transkrip tepat ejaannya', icon: 'book' },
   { key: 'widget', label: 'Widget layar utama', desc: 'Pengingat & shalat langsung di layar HP', icon: 'wid' },
   { key: 'data', label: 'Data & versi', desc: 'Penyimpanan dan versi app', icon: 'file' },
 ];
 
 const GEMINI_KEY = 'gemini_api_key';
+
+/** Kotak kunci API (disimpan terenkripsi di SecureStore). */
+function KeyBox({ store, title, help, onChange }: { store: string; title: string; help: string; onChange?: () => void }) {
+  const toast = useToast();
+  const [val, setVal] = useState('');
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    SecureStore.getItemAsync(store)
+      .then((v) => setHas(!!v))
+      .catch(() => setHas(false));
+  }, [store]);
+  return (
+    <View style={[styles.row, { flexDirection: 'column', alignItems: 'stretch' }]}>
+      <T size={15} weight="bold">
+        {title}
+      </T>
+      <T size={12} muted style={{ marginTop: 3, lineHeight: 17 }}>
+        {has ? 'Tersimpan terenkripsi di HP ini.' : help}
+      </T>
+      <TextInput
+        value={val}
+        onChangeText={setVal}
+        placeholder={has ? '•••••••• (tersimpan)' : 'Tempel kunci di sini'}
+        placeholderTextColor={color.faint}
+        secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={styles.input}
+        maxFontSizeMultiplier={1.3}
+      />
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+        <View style={{ flex: 1 }}>
+          <PrimaryBtn
+            label="Simpan"
+            disabled={val.trim().length < 20}
+            onPress={async () => {
+              await SecureStore.setItemAsync(store, val.trim());
+              setVal('');
+              setHas(true);
+              onChange?.();
+              toast('Kunci disimpan terenkripsi.');
+            }}
+          />
+        </View>
+        {has ? (
+          <PressableScale
+            accessibilityLabel={`Hapus ${title}`}
+            onPress={async () => {
+              await SecureStore.deleteItemAsync(store);
+              setHas(false);
+              onChange?.();
+              toast('Kunci dihapus.');
+            }}
+            style={styles.delBtn}
+          >
+            <Icon name="trash" size={18} color={color.danger} />
+          </PressableScale>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/** Sakelar untuk pengaturan teks '1'/'0'. */
+function SetRow({ k, title, sub, after }: { k: string; title: string; sub?: string; after?: (v: boolean) => void }) {
+  const [on, setOn] = useState(getSetting(k) === '1');
+  return (
+    <Row
+      title={title}
+      sub={sub}
+      right={
+        <Toggle
+          on={on}
+          label={title}
+          onChange={(v) => {
+            setSetting(k, v ? '1' : '0');
+            setOn(v);
+            after?.(v);
+          }}
+        />
+      }
+    />
+  );
+}
 
 function Row({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
   return (
@@ -100,7 +190,7 @@ export default function Pengaturan() {
 
   return (
     <Screen bg="settings">
-      <Header title={current ? current.label : 'Pengaturan'} />
+      <Header title={current ? current.label : 'Pengaturan'} icon={current ? current.icon : 'set'} />
 
       {!current ? (
         <FadeIn>
@@ -252,57 +342,61 @@ export default function Pengaturan() {
           ) : null}
 
           {cat === 'asisten' ? (
-            <Glass style={styles.box}>
-              <View style={[styles.row, { borderTopWidth: 0, flexDirection: 'column', alignItems: 'stretch' }]}>
-                <T size={15} weight="bold">
-                  Kunci Gemini
-                </T>
-                <T size={12} muted style={{ marginTop: 3, lineHeight: 17 }}>
-                  {hasKey
-                    ? 'Tersimpan terenkripsi di HP ini. Dipakai untuk transkrip, asisten, catatan, dan pindai.'
-                    : 'Belum ada. Buat gratis di Google AI Studio, lalu tempel di sini. Tidak pernah dikirim ke tempat lain selain Google.'}
-                </T>
-                <TextInput
-                  value={key}
-                  onChangeText={setKey}
-                  placeholder={hasKey ? '•••••••• (tersimpan)' : 'Tempel kunci di sini'}
-                  placeholderTextColor={color.faint}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.input}
-                  maxFontSizeMultiplier={1.3}
-                />
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <>
+              <Glass style={styles.box}>
+                <View style={[styles.row, { borderTopWidth: 0 }]}>
+                  <IconTile icon="spark" size={40} />
                   <View style={{ flex: 1 }}>
-                    <PrimaryBtn
-                      label="Simpan"
-                      disabled={key.trim().length < 20}
-                      onPress={async () => {
-                        await SecureStore.setItemAsync(GEMINI_KEY, key.trim());
-                        setKey('');
-                        setHasKey(true);
-                        toast('Kunci disimpan terenkripsi.');
-                      }}
-                    />
+                    <T size={15} weight="heavy">
+                      Otak asisten
+                    </T>
+                    <T size={12} muted style={{ marginTop: 3, lineHeight: 17 }}>
+                      Claude dipakai untuk asisten, ringkasan, catatan, pindai, dan tanya rekaman. Gemini hanya untuk mengubah audio rekaman jadi transkrip (Claude belum bisa mendengar audio).
+                    </T>
                   </View>
-                  {hasKey ? (
-                    <PressableScale
-                      accessibilityLabel="Hapus kunci"
-                      onPress={async () => {
-                        await SecureStore.deleteItemAsync(GEMINI_KEY);
-                        setHasKey(false);
-                        toast('Kunci dihapus.');
-                      }}
-                      style={styles.delBtn}
-                    >
-                      <Icon name="trash" size={18} color={color.danger} />
-                    </PressableScale>
-                  ) : null}
                 </View>
+                <KeyBox store={CLAUDE_KEY} title="Kunci Claude (Anthropic)" help="Buat di console.anthropic.com → API Keys. Berbayar sesuai pemakaian (Sonnet: ±$2 per 1 juta token masuk)." />
+                <KeyBox store={GEMINI_KEY} title="Kunci Gemini (transkrip audio)" help="Buat gratis di Google AI Studio, lalu tempel di sini." />
+              </Glass>
+              <Glass style={[styles.box, { marginTop: 12 }]}>
+                <SetRow k="speak_reply" title="Bacakan jawaban" sub="Di mode bicara, asisten menjawab dengan suara." />
+                <SetRow
+                  k="wake_word"
+                  title='Panggil dengan "Halo asisten"'
+                  sub="Saat app terbuka, ucapkan “Halo asisten” untuk langsung bicara. Mikrofon aktif selama app terbuka (bukan saat layar mati)."
+                  after={(v) => {
+                    if (v && !speechReady()) toast('Pengenal suara Google tidak tersedia di HP ini.');
+                    if (!v) stopWake();
+                  }}
+                />
+                <SetRow k="web_search" title="Boleh mencari di internet" sub="Untuk berita/harga/info terbaru. Biaya tambahan Anthropic ±$10 per 1.000 pencarian, dan harus diaktifkan di console Anthropic." />
+                <Row
+                  title="Buka dari tombol samping HP"
+                  sub="Jadikan Manager Urwah sebagai “Aplikasi asisten digital”: Pengaturan HP → Aplikasi → Pilih aplikasi default → Aplikasi asisten digital. Lalu atur tombol samping ke “Asisten digital”. Tekan lama → langsung mode bicara."
+                />
+                <View style={{ paddingBottom: 14 }}>
+                  <GhostBtn label="Buka aplikasi default HP" icon="set" onPress={() => native.openAssistantSettings()} />
+                </View>
+              </Glass>
+            </>
+          ) : null}
+
+          {cat === 'akses' ? (
+            <Glass style={styles.box}>
+              <View style={[styles.row, { borderTopWidth: 0 }]}>
+                <T size={12} muted style={{ lineHeight: 17, flex: 1 }}>
+                  Asisten hanya membaca data yang Anda izinkan di sini. Perubahan (acara, pengingat, chat) selalu menunggu persetujuan Anda.
+                </T>
               </View>
+              <SetRow k="allow_calendar" title="Kalender HP" sub="Melihat & membuat acara (setelah Anda setujui)." />
+              <SetRow k="allow_contacts" title="Kontak" sub="Mencari nomor untuk chat WhatsApp." />
+              <SetRow k="allow_files" title="File & dokumen" sub="PDF/Markdown/gambar yang Anda pilih sendiri." />
             </Glass>
           ) : null}
+
+          {cat === 'drive' ? <DrivePanel /> : null}
+
+          {cat === 'pulau' ? <IslandPanel /> : null}
 
           {cat === 'kamus' ? (
             <>
@@ -366,7 +460,7 @@ export default function Pengaturan() {
           {cat === 'data' ? (
             <Glass style={styles.box}>
               <Row title="Semua data di HP ini" sub="Rekaman, tugas, alarm, dan pengaturan tidak dikirim ke server mana pun." />
-              <Row title="Cadangan Google Drive" sub="Opsional — hadir di versi 0.4." />
+              <Row title="Cadangan" sub="Buka “Google Drive & cadangan” untuk mencadangkan atau memulihkan data." />
               <Row title="Versi app" right={<T pixel size={16}>{Constants.expoConfig?.version ?? '-'}</T>} />
               <View style={{ paddingVertical: 12 }}>
                 <PressableScale

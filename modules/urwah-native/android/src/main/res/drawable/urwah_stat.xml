@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ikon kecil bilah status: bola asisten dengan gelombang suara (putih, mengikuti aturan Android). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+  <path android:fillColor="#FFFFFFFF"
+    android:pathData="M12,3.5a8.5,8.5 0,1 0,0.01 0z M9.2,10.2a0.9,0.9 0,0 1,1.8 0v3.6a0.9,0.9 0,0 1,-1.8 0z M11.1,8.4a0.9,0.9 0,0 1,1.8 0v7.2a0.9,0.9 0,0 1,-1.8 0z M13,10.9a0.9,0.9 0,0 1,1.8 0v2.2a0.9,0.9 0,0 1,-1.8 0z"
+    android:fillType="evenOdd"/>
+</vector>

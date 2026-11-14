@@ -4,7 +4,7 @@ import * as SQLite from 'expo-sqlite';
 
 export const db = SQLite.openDatabaseSync('manager-urwah.db');
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export function initDb() {
   db.execSync('PRAGMA journal_mode = WAL;');
@@ -157,6 +157,20 @@ export function initDb() {
       ['tpl_terima', 'Terima kasih', 'Jazakallah khair {nama} atas dukungannya. Semoga Allah membalas dengan kebaikan.'],
     ];
     for (const t of seed) db.runSync('INSERT OR IGNORE INTO wa_templates (id, name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [t[0], t[1], t[2], now, now]);
+  }
+  if (current < 3) {
+    // Dokumen pendukung rekaman (agenda/notulen PDF atau Markdown) sebagai konteks ringkasan.
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS rec_docs (
+        id TEXT PRIMARY KEY,
+        recording_id TEXT,
+        name TEXT NOT NULL,
+        mime TEXT NOT NULL,
+        uri TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_recdocs_rec ON rec_docs(recording_id);
+    `);
   }
   if (current < SCHEMA_VERSION) db.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 

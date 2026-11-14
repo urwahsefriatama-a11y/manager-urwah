@@ -20,6 +20,26 @@ const DEFAULTS: Record<string, string> = {
   // Sapaan asisten bila app tidak dibuka seharian.
   nudge: '1',
   nudge_id: '',
+  // Shalat
+  auto_silent: '0',
+  silent_min: '20',
+  jumat: '1',
+  mosque_hint: '0',
+  adzan_uri: '',
+  adzan_name: '',
+  prayer_native_ids: '',
+  // Asisten
+  speak_reply: '1',
+  wake_word: '0',
+  web_search: '0',
+  // Izin data HP (pilihan pemilik): kalender, kontak, file
+  allow_calendar: '1',
+  allow_contacts: '1',
+  allow_files: '1',
+  drive_on: '0',
+  // Tampilan
+  island_pos: 'center',
+  live_updates: '1',
 };
 
 const cache = new Map<string, string>();
@@ -55,5 +75,10 @@ export function setFlag(key: string, on: boolean) {
 
 export function resetSettings() {
   db.runSync("DELETE FROM settings WHERE key NOT LIKE 'loc_%'");
+  cache.clear();
+}
+
+/** Kosongkan cache (dipakai setelah pulihkan cadangan). */
+export function clearSettingsCache() {
   cache.clear();
 }

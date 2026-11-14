@@ -7,6 +7,9 @@ import { File } from 'expo-file-system';
 export const GEMINI_KEY = 'gemini_api_key';
 const BASE = 'https://generativelanguage.googleapis.com';
 export const MODEL = 'gemini-flash-latest';
+// Cadangan bila model utama sibuk/kuota habis: Flash-Lite punya kuota gratis lebih longgar.
+export const MODEL_LITE = 'gemini-flash-lite-latest';
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class AiError extends Error {}
 
@@ -39,40 +42,61 @@ function explain(status: number, body: string) {
   return `Gagal menghubungi Gemini (${status}).`;
 }
 
-/** Panggil generateContent. `json: true` meminta jawaban berformat JSON. */
+/** Panggil generateContent. `json: true` meminta jawaban berformat JSON.
+ *  Bila server sibuk (429/5xx): coba ulang dengan jeda, lalu pindah ke Flash-Lite. */
 export async function generate(contents: Turn[], opts: { system?: string; json?: boolean } = {}): Promise<string> {
   const key = await getKey();
-  let res: Awaited<ReturnType<typeof fetch>>;
-  try {
-    res = await fetch(`${BASE}/v1beta/models/${MODEL}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({
-        contents,
-        ...(opts.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
-        generationConfig: opts.json ? { responseMimeType: 'application/json' } : {},
-      }),
-    });
-  } catch {
-    throw new AiError('Tidak ada koneksi internet.');
+  const plan = [MODEL, MODEL, MODEL_LITE, MODEL_LITE];
+  let lastErr = '';
+  for (let attempt = 0; attempt < plan.length; attempt++) {
+    let res: Awaited<ReturnType<typeof fetch>>;
+    try {
+      res = await fetch(`${BASE}/v1beta/models/${plan[attempt]}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          contents,
+          ...(opts.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
+          generationConfig: opts.json ? { responseMimeType: 'application/json' } : {},
+        }),
+      });
+    } catch {
+      throw new AiError('Tidak ada koneksi internet.');
+    }
+    const text = await res.text();
+    if (!res.ok) {
+      lastErr = explain(res.status, text);
+      if (res.status === 429 || res.status >= 500) {
+        await wait([1500, 3000, 6000][attempt] ?? 6000);
+        continue;
+      }
+      throw new AiError(lastErr);
+    }
+    try {
+      const data = JSON.parse(text) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+      const out = (data.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
+      if (!out) throw new AiError('Gemini tidak memberi jawaban. Coba ulangi.');
+      return out;
+    } catch (e) {
+      if (e instanceof AiError) throw e;
+      throw new AiError('Jawaban Gemini tidak terbaca.');
+    }
   }
-  const text = await res.text();
-  if (!res.ok) throw new AiError(explain(res.status, text));
-  try {
-    const data = JSON.parse(text) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const out = (data.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
-    if (!out) throw new AiError('Gemini tidak memberi jawaban. Coba ulangi.');
-    return out;
-  } catch (e) {
-    if (e instanceof AiError) throw e;
-    throw new AiError('Jawaban Gemini tidak terbaca.');
-  }
+  throw new AiError(lastErr || 'Gemini sedang sibuk. Coba lagi nanti.');
 }
 
 /** Ambil JSON dari teks jawaban (kadang dibungkus ```json). */
 export function parseJson<T>(raw: string): T {
   const cleaned = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-  return JSON.parse(cleaned) as T;
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    // Ambil blok JSON pertama bila ada teks di sekitarnya.
+    const a = cleaned.indexOf('{');
+    const b = cleaned.lastIndexOf('}');
+    if (a >= 0 && b > a) return JSON.parse(cleaned.slice(a, b + 1)) as T;
+    throw new AiError('Jawaban AI tidak berformat benar. Coba ulangi.');
+  }
 }
 
 /** Unggah file besar (audio rekaman) ke Files API Gemini, lalu tunggu sampai siap dipakai. */

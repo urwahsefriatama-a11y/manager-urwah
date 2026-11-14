@@ -14,7 +14,7 @@ import { useToast } from '../src/ui/Toast';
 import { color, radius } from '../src/ui/theme';
 import { deleteNote, listNotes, saveNote, saveNoteAnalysis, type Note } from '../src/data/extra';
 import { analyzeNote } from '../src/lib/ai';
-import { hasKey } from '../src/lib/gemini';
+import { hasAnyKey } from '../src/lib/ai';
 import { shortDateTime } from '../src/lib/time';
 
 export default function Catatan() {
@@ -38,8 +38,8 @@ export default function Catatan() {
   );
 
   const analyze = async (n: Note) => {
-    if (!(await hasKey())) {
-      Alert.alert('Kunci Gemini belum diisi', 'Isi kunci Gemini di Pengaturan → Asisten AI.');
+    if (!(await hasAnyKey())) {
+      Alert.alert('Kunci AI belum diisi', 'Isi kunci Claude (atau Gemini) di Pengaturan → Asisten & AI.');
       return;
     }
     setBusy(true);
@@ -54,8 +54,8 @@ export default function Catatan() {
   };
 
   return (
-    <Screen bg="tasks">
-      <Header title="Catatan" right={<RoundBtn icon="plus" label="Catatan baru" size={44} onPress={() => setEdit({ id: null, title: '', body: '' })} />} />
+    <Screen bg="notes">
+      <Header title="Catatan" icon="note" right={<RoundBtn icon="plus" label="Catatan baru" size={44} onPress={() => setEdit({ id: null, title: '', body: '' })} />} />
       {notes.length === 0 ? <Empty icon="note" text="Belum ada catatan. Ketuk + untuk menulis." /> : null}
       <View style={{ gap: 10 }}>
         {notes.map((n, i) => (

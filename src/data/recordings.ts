@@ -197,3 +197,18 @@ export function glossaryTerms(): string[] {
 export function chunkAt(recordingId: string, idx: number) {
   return db.getFirstSync<Chunk>('SELECT id, idx, file_uri, duration_sec FROM chunks WHERE recording_id = ? AND idx = ?', [recordingId, idx]);
 }
+
+// ---------- Dokumen pendukung ----------
+export type RecDoc = { id: string; recording_id: string | null; name: string; mime: string; uri: string };
+
+export function docsOf(recordingId: string): RecDoc[] {
+  return db.getAllSync<RecDoc>('SELECT id, recording_id, name, mime, uri FROM rec_docs WHERE recording_id = ? ORDER BY created_at', [recordingId]);
+}
+
+export function addRecDoc(recordingId: string, name: string, mime: string, uri: string) {
+  db.runSync('INSERT INTO rec_docs (id, recording_id, name, mime, uri, created_at) VALUES (?, ?, ?, ?, ?, ?)', [newId('rd'), recordingId, name, mime, uri, Date.now()]);
+}
+
+export function deleteRecDoc(id: string) {
+  db.runSync('DELETE FROM rec_docs WHERE id = ?', [id]);
+}

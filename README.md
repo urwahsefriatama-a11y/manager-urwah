@@ -2,18 +2,19 @@
 
 App Android pribadi: rekam rapat/kajian → transkrip (Indonesia/Arab/Inggris) → ringkasan, jumlah pembicara, tugas → pengingat (alarm, notifikasi, kalender).
 
-Status: **versi 0.3.** Rencana lengkap ada di `docs/rancangan.md`.
+Status: **versi 0.4 — semua fitur rancangan sudah aktif.** Rencana lengkap ada di `docs/rancangan.md`.
 
-### Yang sudah berfungsi di v0.3
-- **Beranda**: salam, lintasan waktu shalat, pengingat berikutnya, kartu semua fitur, tugas, alarm, kolom asisten.
-- **Rekam** → **Detail rekaman**: proses AI (Gemini) menjadi transkrip Indonesia/Arab/Inggris, jumlah & nama pembicara (dengar contoh suara, ganti nama, gabung), ringkasan, tugas temuan AI (dipasang setelah disetujui), dan tanya isi rekaman.
-- **Asisten AI**: tanya apa saja, lampirkan PDF/Markdown/gambar, pesan suara; "ingatkan saya…" jadi kartu yang disetujui dulu.
-- **Catatan** + analisa AI · **Chat WhatsApp** dengan template {nama}/{tanggal}/{waktu}, kirim sekarang/terjadwal · **Pindai dokumen** (salin teks, PDF, bagikan) · **Arah kiblat** & masjid terdekat.
-- **Alarm layar penuh** (berbunyi tepat waktu, tampil di layar kunci, geser untuk mematikan, tunda 5/10/15 menit, tetap ada setelah HP restart).
-- **Widget layar utama**, salinan ke **kalender HP** (opsional), sapaan asisten harian, kamus istilah.
+### Yang berfungsi
+- **Beranda**: salam, lintasan matahari & shalat berikutnya, pengingat berikutnya, kartu semua fitur, saran asisten, tugas, alarm, kolom tanya asisten.
+- **Pulau notifikasi** (dynamic island) di dalam app + **Live Update** di bilah status/Now Bar saat app ditutup: pengingat (30 menit sebelum), rekaman berjalan, proses AI.
+- **Rekam** (bisa dikecilkan ke pulau) → **Detail**: transkrip (Gemini), pembicara, ringkasan & tugas (Claude), dokumen pendukung, tanya isi rekaman, bagikan audio.
+- **Asisten (Claude)**: membaca tugas, alarm, catatan, rekaman, kalender, kontak, dan Google Drive; lampiran PDF/Markdown/gambar; mode bicara dengan jawaban bersuara; panggilan **"Halo asisten"** saat app terbuka; bisa dibuka dari tombol samping HP (sebagai aplikasi asisten digital). Semua perubahan lewat kartu yang disetujui.
+- **Shalat**: pengingat per waktu (Mati/Notifikasi/Adzan dari file pilihan sendiri), senyap otomatis, pengingat Jumat, saran masjid, kiblat.
+- **Catatan**, **Chat WhatsApp terjadwal**, **Pindai dokumen**, **Alarm layar penuh**, **Widget**, **kalender HP**, **cadangan & pulihkan** (Google Drive atau file).
 
-### Belum (ditandai jelas di app, versi 0.4)
-Adzan penuh & mode senyap otomatis · Live Update di bilah status · cadangan Google Drive.
+### Butuh langkah dari pemilik
+- Kunci **Claude** (berbayar sesuai pemakaian) dan kunci **Gemini** (gratis, untuk transkrip audio).
+- **Google Drive**: daftar sekali di Google Cloud (panduan di Pengaturan → Google Drive & cadangan; SHA-1 tertulis di setiap rilis GitHub).
 
 ### HP yang diuji/ditargetkan
 - **Samsung Galaxy S25 Ultra (Android 15/16):** didukung. Agar rekaman panjang & pengingat tidak dihentikan sistem: Pengaturan → Baterai → Batas penggunaan latar belakang → *Aplikasi tidak pernah tidur* → tambah Manager Urwah.
@@ -31,7 +32,7 @@ Adzan penuh & mode senyap otomatis · Live Update di bilah status · cadangan Go
 APK dibuat otomatis oleh **GitHub Actions** (robot gratis milik GitHub):
 
 - Setiap ada perubahan di cabang `main`, robot membuat APK uji. Unduh di tab **Actions** → pilih proses terbaru → bagian **Artifacts**.
-- Untuk versi baru: naikkan angka `version` di `app.json` (misalnya `0.3.0`). Robot otomatis membuat rilis `v0.3.0` di halaman **Releases**.
+- Untuk versi baru: naikkan angka `version` di `app.json` (misalnya `0.4.0`). Robot otomatis membuat rilis `v0.4.0` di halaman **Releases**.
 
 ## Istilah singkat
 

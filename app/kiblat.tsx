@@ -112,7 +112,7 @@ export default function Kiblat() {
 
   return (
     <Screen bg="shalat">
-      <Header title="Arah kiblat" />
+      <Header title="Kiblat" icon="compass" />
       <FadeIn style={{ alignItems: 'center' }}>
         <T size={13} muted>{`${place.name} · kiblat ${Math.round(bearing)}° dari utara`}</T>
         <View style={{ width: SIZE, height: SIZE, marginTop: 22 }}>

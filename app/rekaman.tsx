@@ -99,7 +99,7 @@ export default function Rekaman() {
 
   return (
     <Screen bg="recordings">
-      <Header title="Rekaman" />
+      <Header title="Rekaman" icon="file" />
       {items.length === 0 ? (
         <FadeIn>
           <Glass style={styles.empty}>

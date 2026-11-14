@@ -88,3 +88,13 @@ Tabel baru (tambahan): `chat_messages`, `notes`, `wa_templates`, `wa_reminders` 
 
 Sisa untuk v0.4: adzan penuh & senyap otomatis, Live Update, cadangan Google Drive.
 Perangkat: hanya Galaxy S25 Ultra (pemilik memilih opsi A untuk MatePad Mini).
+
+## Pembaruan v0.4 (14 Nov 2026)
+- Otak AI: **Claude Sonnet 5.5** (`claude-sonnet-5-5`) untuk asisten (mode agen dengan alat), ringkasan, catatan, pindai, tanya rekaman. **Gemini** tetap untuk audio → transkrip (Claude tidak menerima audio), dengan coba-ulang & cadangan `gemini-flash-lite-latest`.
+- Asisten memakai alat: tugas, alarm, jadwal shalat, catatan, rekaman, template WA, kalender HP, kontak, Google Drive (cari/baca), pencarian web (opsional). Aksi perubahan lewat alat `propose` → kartu persetujuan.
+- Suara: pengenal suara Android (id-ID) + `expo-speech`. "Halo asisten" hanya saat app terbuka (Android tidak mengizinkan app biasa mendengar terus saat layar mati). Tombol samping HP lewat peran *aplikasi asisten digital* (intent ASSIST).
+- Pulau (in-app) + Live Update Android 16 (`android.requestPromotedOngoing`, `android.shortCriticalText`).
+- Shalat: mode per waktu `pm_<waktu>` (off/notif/adzan), layanan native `AdzanService`, senyap otomatis (getar, atau senyap penuh bila izin Jangan Ganggu diberikan).
+- Google Drive via Google Identity Services (AuthorizationClient), scope `drive.readonly` + `drive.file`. Token hanya di memori.
+- Cadangan: `VACUUM INTO` → unggah ke Drive / bagikan; pulihkan per tabel lewat `ATTACH`.
+- Tabel baru: `rec_docs` (dokumen pendukung rekaman). Ikon app baru (bola asisten + gelombang suara + lintasan waktu).

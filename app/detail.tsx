@@ -1,7 +1,12 @@
 // Detail rekaman: proses AI, ringkasan, transkrip, pembicara, tugas temuan AI, dan tanya isi rekaman.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, StyleSheet, View } from 'react-native';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Sharing from 'expo-sharing';
+import { File, Paths } from 'expo-file-system';
+import { island, mirrorLive, clearLive } from '../src/lib/island';
+import { mimeOf } from '../src/lib/gemini';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { Screen } from '../src/ui/Screen';
 import { T } from '../src/ui/T';
@@ -28,10 +33,14 @@ import {
   type Chunk,
   type Segment,
   type Speaker,
+  docsOf,
+  addRecDoc,
+  deleteRecDoc,
 } from '../src/data/recordings';
 import { confirmDraft, dismissDraft } from '../src/data/tasks';
 import { askRecordings } from '../src/lib/ai';
 import { hasKey } from '../src/lib/gemini';
+import { hasAnyKey } from '../src/lib/ai';
 import { isProcessing, processRecording, type Progress } from '../src/lib/process';
 import { ensurePermission } from '../src/lib/notify';
 import { dayDateTime, duration, hourOfDay, nextAtWib, shortDateTime, todayAtWib } from '../src/lib/time';
@@ -61,30 +70,90 @@ function locate(chunks: Chunk[], ms: number) {
   return null;
 }
 
-function Processing({ progress }: { progress: Progress }) {
-  const spin = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [spin]);
+function Processing({ progress, onLeave }: { progress: Progress; onLeave: () => void }) {
   const pct = Math.round((progress.done / Math.max(progress.total, 1)) * 100);
+  const ticks = 32;
   return (
-    <Glass strong style={styles.proc}>
-      <Animated.View style={{ transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-        <Icon name="spark" size={34} color={color.accentSoft} />
-      </Animated.View>
-      <T pixel size={44} style={{ marginTop: 10 }} maxFontSizeMultiplier={1}>{`${pct}%`}</T>
-      <T size={14} muted style={{ textAlign: 'center', marginTop: 4 }}>
+    <View style={{ alignItems: 'center', paddingTop: 40 }}>
+      <T pixel size={96} maxFontSizeMultiplier={1}>{`${pct}`}</T>
+      <T size={12} weight="heavy" style={{ marginTop: 14, letterSpacing: 1.2, color: color.accentSoft }}>
+        AI SEDANG BEKERJA
+      </T>
+      <T size={20} weight="heavy" style={{ textAlign: 'center', marginTop: 6, lineHeight: 26 }}>
         {progress.step}
       </T>
-      <View style={styles.bar}>
-        <View style={[styles.barFill, { width: `${pct}%` }]} />
+      <View style={styles.ticks}>
+        {Array.from({ length: ticks }, (_, i) => (
+          <View key={i} style={[styles.tick, i / ticks < pct / 100 ? styles.tickOn : null]} />
+        ))}
       </View>
-      <T size={12} muted style={{ marginTop: 10, textAlign: 'center' }}>
-        Boleh tinggalkan layar ini sebentar, tapi jangan tutup app sampai selesai.
+      <View style={{ alignSelf: 'stretch', marginTop: 30 }}>
+        <PrimaryBtn label="Tinggalkan, kabari saya nanti" onPress={onLeave} />
+      </View>
+      <T size={13} muted style={{ marginTop: 12, textAlign: 'center' }}>
+        Proses jalan terus di belakang. Progresnya tampil di pulau.
       </T>
-    </Glass>
+    </View>
+  );
+}
+
+/** Dokumen pendukung (agenda/notulen) jadi konteks ringkasan. */
+function DocsRow({ recordingId }: { recordingId: string }) {
+  const [docs, setDocs] = useState(() => docsOf(recordingId));
+  const add = async () => {
+    const r = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'text/markdown', 'text/plain', 'text/x-markdown', 'application/octet-stream'], copyToCacheDirectory: true, multiple: true });
+    if (r.canceled) return;
+    for (const a of r.assets) {
+      let mime = a.mimeType && a.mimeType !== 'application/octet-stream' ? a.mimeType : mimeOf(a.name, 'text/plain');
+      if (mime === 'text/x-markdown') mime = 'text/markdown';
+      // salin ke folder dokumen app supaya tidak hilang saat cache dibersihkan
+      const dest = new File(Paths.document, `doc-${Date.now()}-${a.name.replace(/[^\w.-]/g, '_')}`);
+      try {
+        await new File(a.uri).copy(dest);
+        addRecDoc(recordingId, a.name, mime, dest.uri);
+      } catch {
+        addRecDoc(recordingId, a.name, mime, a.uri);
+      }
+    }
+    setDocs(docsOf(recordingId));
+  };
+  return (
+    <View style={{ marginTop: 12, gap: 6 }}>
+      {docs.map((d) => (
+        <Glass key={d.id} style={styles.docChip}>
+          <View style={styles.docK}>
+            <T pixel size={11} style={{ color: color.ink }} maxFontSizeMultiplier={1}>
+              {d.mime === 'application/pdf' ? 'PDF' : 'MD'}
+            </T>
+          </View>
+          <T size={13} weight="bold" numberOfLines={1} style={{ flex: 1 }}>
+            {d.name}
+          </T>
+          <PressableScale
+            accessibilityLabel={`Hapus ${d.name}`}
+            onPress={() => {
+              deleteRecDoc(d.id);
+              setDocs(docsOf(recordingId));
+            }}
+            style={styles.docX}
+          >
+            <Icon name="close" size={12} />
+          </PressableScale>
+        </Glass>
+      ))}
+      <PressableScale accessibilityLabel="Tambah dokumen pendukung" onPress={add} style={styles.docAdd} depth={0.97}>
+        <Icon name="file" size={18} />
+        <View style={{ flex: 1 }}>
+          <T size={14} weight="bold">
+            Dokumen pendukung
+          </T>
+          <T size={12} muted>
+            Agenda/notulen PDF atau Markdown, jadi konteks ringkasan
+          </T>
+        </View>
+        <Icon name="plus" size={18} />
+      </PressableScale>
+    </View>
   );
 }
 
@@ -144,16 +213,40 @@ export default function Detail() {
   const run = async () => {
     if (!id) return;
     if (!(await hasKey())) {
-      Alert.alert('Kunci Gemini belum diisi', 'Isi kunci Gemini di Pengaturan → Asisten AI terlebih dulu.');
+      Alert.alert('Kunci Gemini dibutuhkan', 'Transkrip audio memakai Gemini (Claude belum bisa mendengar audio). Isi kunci Gemini di Pengaturan → Asisten & AI.');
       return;
     }
     setProgress({ step: 'Menyiapkan…', done: 0, total: 1 });
+    const title = rec?.title ?? 'Rekaman';
     try {
-      await processRecording(id, setProgress);
+      await processRecording(id, (p) => {
+        setProgress(p);
+        const pct = Math.round((p.done / Math.max(p.total, 1)) * 100);
+        island.show({ type: 'proc', pill: 'AI bekerja', right: `${pct}%`, kicker: 'Memproses rekaman', title, sub: p.step, pct }, 'pill', true);
+        mirrorLive('proc', { title: `AI memproses · ${pct}%`, text: p.step, progress: pct, shortText: `${pct}%`, path: `detail?id=${id}` });
+      });
       success();
       toast('Selesai. Ringkasan & transkrip siap.');
       setTab('ringkasan');
+      clearLive('proc');
+      island.show(
+        {
+          type: 'done',
+          pill: 'Selesai',
+          right: '100%',
+          kicker: 'Ringkasan siap',
+          title,
+          sub: 'Transkrip, pembicara, dan tugas sudah ada',
+          pct: 100,
+          b: { label: 'Buka', run: () => { island.hide(); router.navigate({ pathname: '/detail', params: { id } }); } },
+        },
+        'pill',
+        true,
+      );
+      setTimeout(() => island.hide('done'), 8000);
     } catch (e) {
+      clearLive('proc');
+      island.hide('proc');
       Alert.alert('Proses berhenti', e instanceof Error ? e.message : String(e));
     } finally {
       setProgress(null);
@@ -180,8 +273,8 @@ export default function Detail() {
 
   if (!rec) {
     return (
-      <Screen bg="recordings">
-        <Header title="Rekaman" />
+      <Screen bg="detail">
+        <Header title="Rekaman" icon="rec" />
         <Empty icon="file" text="Rekaman tidak ditemukan." />
       </Screen>
     );
@@ -191,17 +284,37 @@ export default function Detail() {
   const pending = drafts.filter((d) => d.status === 'draft');
 
   return (
-    <Screen bg="recordings">
-      <Header title={rec.title} />
+    <Screen bg="detail">
+      <Header title="Rekaman" icon="rec" />
       <FadeIn>
-        <T size={13} muted>
-          {`${shortDateTime(rec.started_at)} · ${duration(rec.duration_sec)} · ${chunks.length} potongan${rec.speaker_count ? ` · ${rec.speaker_count} pembicara` : ''}`}
+        <T size={18} weight="heavy" style={{ lineHeight: 24 }}>
+          {rec.title}
+        </T>
+        <T size={13} muted style={{ marginTop: 2 }}>
+          {`${shortDateTime(rec.started_at)} · ${rec.template} · ${chunks.length} potongan`}
         </T>
       </FadeIn>
+      <FadeIn delay={60} style={styles.stats}>
+        {[
+          [rec.speaker_count ? String(rec.speaker_count) : '–', 'pembicara'],
+          [duration(rec.duration_sec), 'durasi'],
+          [String(drafts.length), 'tugas'],
+        ].map(([v, l]) => (
+          <Glass key={l} style={styles.stat}>
+            <T pixel size={30} maxFontSizeMultiplier={1} numberOfLines={1}>
+              {v}
+            </T>
+            <T size={12} muted style={{ marginTop: 6 }}>
+              {l}
+            </T>
+          </Glass>
+        ))}
+      </FadeIn>
+      <DocsRow recordingId={rec.id} />
 
       {progress ? (
         <FadeIn delay={40} style={{ marginTop: 18 }}>
-          <Processing progress={progress} />
+          <Processing progress={progress} onLeave={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
         </FadeIn>
       ) : id && isProcessing(id) ? (
         <FadeIn delay={40} style={{ marginTop: 18 }}>
@@ -258,7 +371,17 @@ export default function Detail() {
                   ))}
                 </Glass>
               ) : null}
-              <View style={{ marginTop: 14 }}>
+              <View style={{ marginTop: 14, flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <GhostBtn
+                    label="Bagikan audio"
+                    icon="share"
+                    onPress={async () => {
+                      for (const c of chunks) await Sharing.shareAsync(c.file_uri, { mimeType: 'audio/aac', dialogTitle: `Potongan ${c.idx + 1}` }).catch(() => {});
+                    }}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
                 <GhostBtn
                   label="Proses ulang"
                   icon="refresh"
@@ -269,6 +392,7 @@ export default function Detail() {
                     ])
                   }
                 />
+                </View>
               </View>
             </FadeIn>
           ) : null}
@@ -301,6 +425,33 @@ export default function Detail() {
 
           {tab === 'pembicara' ? (
             <FadeIn key="p" style={{ gap: 10 }}>
+              <Glass style={styles.card}>
+                <T size={15} weight="heavy">
+                  Porsi bicara
+                </T>
+                <T size={12} muted>
+                  Berapa persen waktu tiap orang bicara
+                </T>
+                {(() => {
+                  const tot = segments.reduce((a, g) => a + Math.max(0, g.end_ms - g.start_ms), 0) || 1;
+                  return speakers.map((sp) => {
+                    const pct = Math.round((segments.filter((g) => g.speaker_id === sp.id).reduce((a, g) => a + Math.max(0, g.end_ms - g.start_ms), 0) / tot) * 100);
+                    return (
+                      <View key={sp.id} style={{ marginTop: 12 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <T size={13} weight="bold">
+                            {nameOf(sp.id)}
+                          </T>
+                          <T pixel size={14} maxFontSizeMultiplier={1}>{`${pct}%`}</T>
+                        </View>
+                        <View style={styles.shareTrack}>
+                          <View style={[styles.shareFill, { width: `${Math.max(2, pct)}%` }]} />
+                        </View>
+                      </View>
+                    );
+                  });
+                })()}
+              </Glass>
               <T size={13} muted>
                 Ketuk ▶ untuk mendengar contoh suara, lalu beri nama. Bila satu orang terpecah jadi dua, pakai "Gabung".
               </T>
@@ -530,9 +681,17 @@ function ConfirmTaskSheet({
 }
 
 const styles = StyleSheet.create({
-  proc: { borderRadius: radius.xl, padding: 24, alignItems: 'center' },
-  bar: { alignSelf: 'stretch', height: 6, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 16, overflow: 'hidden' },
-  barFill: { height: 6, borderRadius: 6, backgroundColor: '#FFFFFF' },
+  ticks: { flexDirection: 'row', gap: 4, marginTop: 26 },
+  shareTrack: { height: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 6, overflow: 'hidden' },
+  shareFill: { height: 8, borderRadius: 8, backgroundColor: '#FFFFFF' },
+  tick: { width: 3, height: 26, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
+  tickOn: { backgroundColor: '#FFFFFF' },
+  stats: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  stat: { flex: 1, borderRadius: 24, padding: 14 },
+  docChip: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8, borderRadius: 18 },
+  docK: { width: 38, height: 38, borderRadius: 11, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  docX: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  docAdd: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 20, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.06)' },
   cta: { borderRadius: radius.xl, padding: 22, alignItems: 'center' },
   tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16, marginBottom: 14 },
   card: { borderRadius: radius.lg, padding: 18 },

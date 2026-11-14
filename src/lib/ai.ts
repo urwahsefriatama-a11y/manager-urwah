@@ -1,6 +1,34 @@
 // Fungsi AI (nama mengikuti rancangan): transcribeChunk, finalizeRecording, askRecordings,
 // plus asisten, analisa catatan, dan baca teks dari foto.
-import { generate, parseJson, type Part, type Turn } from './gemini';
+// Otak: Claude (bila kuncinya diisi) untuk semua teks/gambar/PDF; Gemini khusus audio (Claude tidak menerima audio).
+import { generate, hasKey, parseJson, type Part, type Turn } from './gemini';
+import { claudeAgent, claudeGenerate, hasClaude } from './claude';
+
+/** Pilih otak untuk tugas teks/gambar/PDF. */
+async function think(turns: Turn[], opts: { system?: string; json?: boolean } = {}) {
+  if (await hasClaude()) return claudeGenerate(turns, opts);
+  return generate(turns, opts);
+}
+
+/** Nama otak yang sedang dipakai, untuk ditampilkan di UI. */
+export async function brainName() {
+  if (await hasClaude()) return 'Claude Sonnet';
+  if (await hasKey()) return 'Gemini Flash';
+  return '';
+}
+
+/** Ada kunci AI apa saja yang terisi. */
+export async function hasAnyKey() {
+  return (await hasClaude()) || (await hasKey());
+}
+
+/** Pesan suara singkat → teks (Gemini). */
+export async function transcribeVoice(audio: Part): Promise<string> {
+  const raw = await generate([
+    { role: 'user', parts: [audio, { text: `Tuliskan ucapan dalam rekaman ini apa adanya (${'Bahasa Indonesia, Arab, atau Inggris'}). Hanya teksnya.` }] },
+  ]);
+  return raw.trim();
+}
 
 export type RawSegment = { speaker: string; start_ms: number; end_ms: number; text: string; lang?: string };
 
@@ -31,7 +59,7 @@ export type Finalized = {
 };
 
 /** Semua transkrip + jenis rekaman → ringkasan, jumlah pembicara, dan tugas. */
-export async function finalizeRecording(transcript: string, template: string, nowIso: string): Promise<Finalized> {
+export async function finalizeRecording(transcript: string, template: string, nowIso: string, docs: Part[] = []): Promise<Finalized> {
   const prompt = `Ini transkrip ${template.toLowerCase()} (label S1, S2, ... = pembicara). Waktu sekarang: ${nowIso} (WIB, UTC+7).
 Buat dalam Bahasa Indonesia:
 1. "title": judul singkat (maks 8 kata).
@@ -39,11 +67,12 @@ Buat dalam Bahasa Indonesia:
 3. "speaker_count": jumlah orang berbeda yang berbicara.
 4. "speakers": [{"label":"S1","guess_name":"nama bila disebut, kosongkan bila tidak tahu"}].
 5. "tasks": tugas/janji yang disebut: [{"title":"...","assignee":"siapa","due_iso":"2026-11-16T10:00:00+07:00 atau kosong"}]. Jangan mengarang tugas yang tidak disebut.
+Bila ada dokumen pendukung (agenda/notulen) terlampir, pakai sebagai konteks.
 Balas HANYA JSON dengan kunci di atas.
 
 TRANSKRIP:
 ${transcript}`;
-  const raw = await generate([{ role: 'user', parts: [{ text: prompt }] }], { json: true });
+  const raw = await think([{ role: 'user', parts: [...docs, { text: prompt }] }], { json: true });
   const d = parseJson<Partial<Finalized>>(raw);
   return {
     title: d.title || '',
@@ -62,22 +91,50 @@ Pertanyaan: ${question}
 
 TRANSKRIP (format [ms] Sx: teks):
 ${transcript}`;
-  const raw = await generate([{ role: 'user', parts: [{ text: prompt }] }], { json: true });
+  const raw = await think([{ role: 'user', parts: [{ text: prompt }] }], { json: true });
   const d = parseJson<{ answer?: string; sources?: { start_ms: number }[] }>(raw);
   return { answer: d.answer || 'Tidak ditemukan.', sources: d.sources ?? [] };
 }
 
-export type AssistantAction = { type: 'reminder'; title: string; at_iso: string } | { type: 'task'; title: string };
+export type AssistantAction = {
+  type: 'reminder' | 'task' | 'alarm' | 'event' | 'note' | 'whatsapp';
+  title: string;
+  at_iso?: string;
+  body?: string;
+  phone?: string;
+  contact_name?: string;
+};
 export type AssistantReply = { reply: string; actions: AssistantAction[] };
 
-const ASSISTANT_SYSTEM = `Kamu adalah "Manager Urwah", asisten pribadi Urwah (Muslim, ketua yayasan, pebisnis kopi, desainer & videografer).
-Gaya: Bahasa Indonesia yang hangat, ringkas, dan sangat terstruktur — seperti pemecah masalah terbaik.
-Untuk masalah: inti masalah → penyebab → pilihan (dengan untung-rugi) → rekomendasi → langkah konkret.
-Jangan mengarang fakta; katakan bila tidak yakin. Gunakan Markdown sederhana (judul ##, poin -, **tebal**).
+const PERSONA = `Kamu "Manager Urwah", asisten pribadi Urwah: Muslim, ketua yayasan Utlul Qur'an, pemilik 521 Coffee, desainer & videografer, pengajar fotografi/film.
+Gaya: Bahasa Indonesia yang hangat, ringkas, tegas, sangat terstruktur — seperti kepala staf terbaik. Langsung ke inti.
+Cara berpikir: pahami tujuan sebenarnya → cek data nyata dulu (pakai alat: tugas, alarm, kalender, catatan, rekaman, kontak, Drive) → beri jawaban/rencana konkret.
+Untuk masalah: inti → penyebab → pilihan (untung-rugi) → rekomendasi → langkah berikutnya dengan waktu.
+Jangan mengarang fakta, nomor, atau isi file; bila belum tahu, pakai alat atau katakan terus terang. Untuk soal agama, sebutkan dalil hanya bila yakin dan sarankan cek ke ustadz.
+Markdown sederhana (##, -, **tebal**). Untuk mode suara: jawab pendek dan enak didengar.`;
+
+const ASSISTANT_SYSTEM = `${PERSONA}
 Bila pengguna minta diingatkan atau menyebut tugas, isi "actions" — pengguna yang akan menyetujui.
 Selalu balas JSON: {"reply":"teks Markdown","actions":[{"type":"reminder","title":"...","at_iso":"2026-11-16T09:00:00+07:00"},{"type":"task","title":"..."}]}`;
 
-export async function askAssistant(history: Turn[], nowIso: string): Promise<AssistantReply> {
+const AGENT_SYSTEM = `${PERSONA}
+Kamu punya alat. Pakai alat baca kapan pun perlu data nyata. Untuk SEMUA perubahan (pengingat, tugas, alarm, acara kalender, catatan, chat WA) panggil alat "propose" — pemilik akan menyetujui lewat kartu; jangan bilang sudah dipasang.
+Jawaban akhir: teks Markdown biasa (bukan JSON).`;
+
+export async function askAssistant(history: Turn[], nowIso: string, onStep?: (s: string) => void, voice = false): Promise<AssistantReply> {
+  if (await hasClaude()) {
+    const { toolDefs, runTool } = await import('./assistantTools');
+    const { getSetting } = await import('../data/settings');
+    const proposals: AssistantAction[] = [];
+    const reply = await claudeAgent(history, {
+      system: `${AGENT_SYSTEM}\nWaktu sekarang: ${nowIso} (WIB).${voice ? '\nSaat ini mode SUARA: jawab maksimal 3 kalimat, tanpa Markdown.' : ''}`,
+      tools: toolDefs(),
+      run: (name, input) => runTool(name, input, proposals),
+      webSearch: getSetting('web_search') === '1',
+      onStep,
+    });
+    return { reply, actions: proposals.filter((a) => a.title) };
+  }
   const raw = await generate(history, { system: `${ASSISTANT_SYSTEM}\nWaktu sekarang: ${nowIso} (WIB).`, json: true });
   try {
     const d = parseJson<{ reply?: string; actions?: AssistantAction[] }>(raw);
@@ -98,12 +155,12 @@ Ringkas dan jelas.
 
 Judul: ${title}
 ${body}`;
-  return generate([{ role: 'user', parts: [{ text: prompt }] }]);
+  return think([{ role: 'user', parts: [{ text: prompt }] }]);
 }
 
 /** Foto dokumen → teks apa adanya. */
 export async function readTextFromImage(image: Part): Promise<string> {
-  return generate([
+  return think([
     {
       role: 'user',
       parts: [image, { text: 'Salin semua teks di gambar dokumen ini apa adanya, pertahankan baris dan urutan. Hanya teksnya saja, tanpa komentar.' }],

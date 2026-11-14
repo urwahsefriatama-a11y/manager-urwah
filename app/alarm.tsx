@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, BackHandler, Easing, PanResponder, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { Screen } from '../src/ui/Screen';
 import { T } from '../src/ui/T';
 import { Glass } from '../src/ui/Glass';
@@ -14,8 +15,8 @@ import { markFired } from '../src/data/alarms';
 import { hhmm, longDate } from '../src/lib/time';
 import { heavy, success } from '../src/lib/haptics';
 
-const TRACK = 300;
-const KNOB = 64;
+const TRACK = 330;
+const KNOB = 96;
 
 function leave() {
   if (router.canGoBack()) router.back();
@@ -61,7 +62,7 @@ export default function AlarmRing() {
     leave();
   };
 
-  const max = TRACK - KNOB - 8;
+  const max = TRACK - KNOB - 16;
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -77,73 +78,71 @@ export default function AlarmRing() {
     }),
   ).current;
 
-  const ring = breathe.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
-  const ringO = breathe.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.15] });
   const hint = x.interpolate({ inputRange: [0, max * 0.5], outputRange: [1, 0], extrapolate: 'clamp' });
+  const glow = breathe.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.7] });
+  const [hh, mm] = hhmm(now).split(':');
 
   return (
-    <Screen bg="rec" fixed>
-      <View style={styles.wrap}>
-        <T size={14} weight="bold" muted>
+    <Screen bg="alarm" fixed>
+      <View style={styles.top}>
+        <T size={26} weight="heavy">
+          Alarm
+        </T>
+        <T size={13} muted>
           {longDate(now)}
         </T>
-        <T pixel size={96} style={{ marginTop: 4 }} maxFontSizeMultiplier={1}>
-          {hhmm(now)}
-        </T>
-        <View style={styles.bellBox}>
-          <Animated.View style={[styles.bellRing, { opacity: ringO, transform: [{ scale: ring }] }]} />
-          <Glass strong style={styles.bell}>
-            <Icon name="alarm" size={44} strokeWidth={2} />
-          </Glass>
-        </View>
-        <T size={24} weight="heavy" style={{ textAlign: 'center' }} numberOfLines={2}>
-          {title}
-        </T>
-        {body ? (
-          <T size={15} muted style={{ textAlign: 'center', marginTop: 6 }} numberOfLines={3}>
-            {body}
+      </View>
+      <View style={styles.wrap}>
+        <Glass strong style={styles.dial}>
+          <View style={styles.dotW} />
+          <Animated.View style={[styles.dotA, { opacity: glow }]} />
+          <T pixel size={96} maxFontSizeMultiplier={1} style={{ lineHeight: 92 }}>
+            {hh}
           </T>
-        ) : null}
-
-        <View style={styles.snoozeRow}>
-          {[5, 10, 15].map((m) => (
-            <PressableScale key={m} accessibilityLabel={`Tunda ${m} menit`} onPress={() => snooze(m)} style={styles.snoozeWrap}>
-              <Glass style={styles.snooze}>
-                <T pixel size={22} maxFontSizeMultiplier={1}>
-                  {String(m)}
-                </T>
-                <T size={11} weight="bold" muted>
-                  mnt
-                </T>
-              </Glass>
-            </PressableScale>
-          ))}
-        </View>
-
+          <T pixel size={96} maxFontSizeMultiplier={1} style={{ lineHeight: 92, marginTop: 8 }}>
+            {mm}
+          </T>
+        </Glass>
+        <T size={16} weight="bold" style={{ marginTop: 22, textAlign: 'center' }} numberOfLines={2}>
+          {body || title}
+        </T>
         <Glass style={styles.track}>
           <Animated.View style={[styles.hint, { opacity: hint }]} pointerEvents="none">
-            <T size={15} weight="bold" muted>
-              Geser untuk mematikan
-            </T>
+            <Icon name="chev" size={22} color="rgba(255,255,255,0.35)" strokeWidth={2.4} />
+            <Icon name="chev" size={22} color="rgba(255,255,255,0.55)" strokeWidth={2.4} />
+            <Icon name="chev" size={22} color="rgba(255,255,255,0.8)" strokeWidth={2.4} />
           </Animated.View>
           <Animated.View {...pan.panHandlers} style={[styles.knob, { transform: [{ translateX: x }] }]}>
-            <Icon name="chev" size={26} color={color.ink} strokeWidth={2.8} />
+            <T size={16} weight="heavy">
+              Matikan
+            </T>
           </Animated.View>
         </Glass>
+      </View>
+      <Svg width="100%" height={70} viewBox="0 0 346 70" preserveAspectRatio="none">
+        <Path d="M10 60 Q173 -10 336 60" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={2} strokeDasharray="1 7" strokeLinecap="round" />
+        <Circle cx={173} cy={25} r={4} fill={color.accent} />
+      </Svg>
+      <View style={styles.snoozeRow}>
+        {[5, 10, 15].map((m) => (
+          <PressableScale key={m} accessibilityLabel={`Tunda ${m} menit`} onPress={() => snooze(m)} style={styles.snooze}>
+            <T size={14} weight="heavy">{`Tunda ${m} mnt`}</T>
+          </PressableScale>
+        ))}
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  bellBox: { width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginVertical: 26 },
-  bellRing: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#FFFFFF' },
-  bell: { width: 104, height: 104, borderRadius: 52, alignItems: 'center', justifyContent: 'center' },
-  snoozeRow: { flexDirection: 'row', gap: 12, marginTop: 34 },
-  snoozeWrap: { borderRadius: radius.lg },
-  snooze: { width: 78, height: 70, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
-  track: { width: TRACK, height: KNOB + 8, borderRadius: radius.pill, marginTop: 30, justifyContent: 'center', padding: 4 },
-  hint: { position: 'absolute', left: KNOB + 8, right: 0, alignItems: 'center' },
-  knob: { width: KNOB, height: KNOB, borderRadius: KNOB / 2, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  dial: { width: 300, height: 300, borderRadius: 150, alignItems: 'center', justifyContent: 'center' },
+  dotW: { position: 'absolute', left: '22%', top: '20%', width: 12, height: 12, borderRadius: 6, backgroundColor: '#FFFFFF' },
+  dotA: { position: 'absolute', right: 6, top: '50%', marginTop: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: color.accent },
+  track: { width: TRACK, height: KNOB + 16, borderRadius: 999, marginTop: 14, justifyContent: 'center', padding: 8 },
+  hint: { position: 'absolute', right: 30, flexDirection: 'row', gap: 0 },
+  knob: { width: KNOB, height: KNOB, borderRadius: KNOB / 2, backgroundColor: '#E8652A', alignItems: 'center', justifyContent: 'center', shadowColor: '#C8410A', shadowOpacity: 0.5, shadowRadius: 14, elevation: 8 },
+  snoozeRow: { flexDirection: 'row', gap: 10 },
+  snooze: { flex: 1, paddingVertical: 14, borderRadius: 999, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.12)' },
 });

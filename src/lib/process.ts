@@ -5,6 +5,7 @@ import {
   addDraftTask,
   addSegment,
   chunksOf,
+  docsOf,
   ensureSpeaker,
   getRecording,
   glossaryTerms,
@@ -16,7 +17,8 @@ import {
   renameSpeaker,
 } from '../data/recordings';
 import { finalizeRecording, transcribeChunk } from './ai';
-import { mimeOf, uploadFile } from './gemini';
+import { File } from 'expo-file-system';
+import { inlinePart, mimeOf, uploadFile, type Part } from './gemini';
 import { isoWib } from './time';
 
 export type Progress = { step: string; done: number; total: number };
@@ -82,7 +84,17 @@ async function processInner(recordingId: string, onProgress: (p: Progress) => vo
     const transcript = segmentsOf(recordingId)
       .map((g) => `[${g.start_ms}] ${labelOf.get(g.speaker_id ?? '') ?? 'S?'}: ${g.text}`)
       .join('\n');
-    const fin = await finalizeRecording(transcript, rec.template, isoWib());
+    // Dokumen pendukung ikut dikirim sebagai konteks (PDF/gambar base64, Markdown/teks sebagai teks).
+    const docs: Part[] = [];
+    for (const d of docsOf(recordingId)) {
+      try {
+        if (d.mime.startsWith('text/')) docs.push({ text: `Dokumen pendukung "${d.name}":\n${(await new File(d.uri).text()).slice(0, 60000)}` });
+        else docs.push(await inlinePart(d.uri, d.mime));
+      } catch {
+        // file sudah tidak ada: lewati
+      }
+    }
+    const fin = await finalizeRecording(transcript, rec.template, isoWib(), docs);
     saveFinal(recordingId, fin.title, fin.summary_md, fin.speaker_count || spk.length);
     for (const s of fin.speakers) {
       const found = spk.find((x) => x.label === (s.label || '').toUpperCase());

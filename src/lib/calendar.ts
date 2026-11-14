@@ -38,3 +38,17 @@ export async function removeCalendarEvent(id: string | null | undefined) {
     // Sudah dihapus dari kalender: abaikan.
   }
 }
+
+/** Buat acara atas permintaan pemilik (disetujui di kartu asisten), tanpa melihat pengaturan sinkron. */
+export async function createCalendarEvent(title: string, atMs: number, minutes = 60): Promise<string | null> {
+  const calId = await writableCalendarId();
+  if (!calId) return null;
+  return Calendar.createEventAsync(calId, {
+    title,
+    startDate: new Date(atMs),
+    endDate: new Date(atMs + minutes * 60 * 1000),
+    timeZone: 'Asia/Jakarta',
+    alarms: [{ relativeOffset: -10 }],
+    notes: 'Dibuat oleh Manager Urwah',
+  });
+}

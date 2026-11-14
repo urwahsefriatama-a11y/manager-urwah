@@ -15,7 +15,7 @@ import { FadeIn, Field, GhostBtn, Header, PrimaryBtn } from '../src/ui/bits';
 import { useToast } from '../src/ui/Toast';
 import { color, radius } from '../src/ui/theme';
 import { readTextFromImage } from '../src/lib/ai';
-import { hasKey } from '../src/lib/gemini';
+import { hasAnyKey } from '../src/lib/ai';
 import { success } from '../src/lib/haptics';
 
 function esc(s: string) {
@@ -40,8 +40,8 @@ export default function Pindai() {
 
   const read = async () => {
     if (!photo?.base64) return;
-    if (!(await hasKey())) {
-      Alert.alert('Kunci Gemini belum diisi', 'Isi kunci Gemini di Pengaturan → Asisten AI.');
+    if (!(await hasAnyKey())) {
+      Alert.alert('Kunci AI belum diisi', 'Isi kunci Claude (atau Gemini) di Pengaturan → Asisten & AI.');
       return;
     }
     setBusy(true);
@@ -63,12 +63,12 @@ export default function Pindai() {
     await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Bagikan PDF' });
   };
 
-  if (!perm) return <Screen bg="soon"><Header title="Pindai" /></Screen>;
+  if (!perm) return <Screen bg="scan"><Header title="Pindai" icon="scan" /></Screen>;
 
   if (!perm.granted) {
     return (
-      <Screen bg="soon">
-        <Header title="Pindai dokumen" />
+      <Screen bg="scan">
+        <Header title="Pindai" icon="scan" />
         <Glass strong style={styles.card}>
           <Icon name="camera" size={34} />
           <T size={16} weight="bold" style={{ marginTop: 10, textAlign: 'center' }}>
@@ -83,8 +83,8 @@ export default function Pindai() {
   }
 
   return (
-    <Screen bg="soon">
-      <Header title="Pindai dokumen" />
+    <Screen bg="scan">
+      <Header title="Pindai" icon="scan" />
       {!photo ? (
         <FadeIn>
           <View style={styles.camWrap}>

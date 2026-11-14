@@ -1,5 +1,5 @@
 // Komponen kecil yang dipakai bersama.
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { router } from 'expo-router';
 import { Icon, type IconName } from './Icon';
@@ -8,6 +8,7 @@ import { T } from './T';
 import { color, font, radius } from './theme';
 import { Glass } from './Glass';
 import { getSetting } from '../data/settings';
+import { MenuSheet } from './MenuSheet';
 
 export function reduceMotion() {
   return getSetting('reduce_motion') === '1';
@@ -46,14 +47,28 @@ export function RoundBtn({ icon, label, onPress, size = 44, solid }: { icon: Ico
 }
 
 /** Kepala layar: tombol kembali + judul. */
-export function Header({ title, right }: { title: string; right?: ReactNode }) {
+/**
+ * Judul layar ala prototipe: ikon kaca + judul besar + panah ▾ yang membuka menu.
+ * Kembali: gestur/tombol kembali Android, atau tombol bulat kecil di kanan.
+ */
+export function Header({ title, icon = 'home', right, back = true }: { title: string; icon?: IconName; right?: ReactNode; back?: boolean }) {
+  const [menu, setMenu] = useState(false);
   return (
     <View style={styles.header}>
-      <RoundBtn icon="back" label="Kembali" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
-      <T size={17} weight="bold" style={styles.headerTitle} numberOfLines={1}>
-        {title}
-      </T>
-      <View style={styles.headerRight}>{right}</View>
+      <PressableScale accessibilityLabel={`${title}, buka menu`} onPress={() => setMenu(true)} style={styles.headerBtn} depth={0.96}>
+        <IconTile icon={icon} size={44} iconSize={22} />
+        <T size={24} weight="heavy" style={styles.headerTitle} numberOfLines={1}>
+          {title}
+        </T>
+        <View style={{ transform: [{ rotate: '90deg' }] }}>
+          <Icon name="chev" size={18} color="rgba(255,255,255,0.7)" strokeWidth={2.4} />
+        </View>
+      </PressableScale>
+      <View style={styles.headerRight}>
+        {right}
+        {back ? <RoundBtn icon="back" label="Kembali" size={40} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} /> : null}
+      </View>
+      <MenuSheet open={menu} onClose={() => setMenu(false)} />
     </View>
   );
 }
@@ -185,9 +200,10 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20 },
   round: { borderRadius: radius.pill },
   roundIn: { flex: 1, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
-  headerTitle: { flex: 1 },
-  headerRight: { minWidth: 44, alignItems: 'flex-end' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+  headerBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 22, minWidth: 0 },
+  headerTitle: { flexShrink: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sw: { width: 50, height: 30, borderRadius: radius.pill, padding: 4, justifyContent: 'center' },
   knob: { width: 22, height: 22, borderRadius: radius.pill },
   chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill },

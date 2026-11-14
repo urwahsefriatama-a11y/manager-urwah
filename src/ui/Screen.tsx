@@ -1,11 +1,11 @@
 // Kerangka layar: latar gradasi, jarak aman (lubang kamera & bilah navigasi), isi rata tengah di layar lebar.
 import { useRef, type ComponentRef, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurTargetView } from 'expo-blur';
 import { BlurTargetContext } from './Glass';
-import { backgrounds, MAX_CONTENT_WIDTH, type BgName } from './theme';
+import { MAX_CONTENT_WIDTH } from './theme';
+import { Backdrop, type BgName } from './Backdrop';
 
 type Props = {
   bg: BgName;
@@ -20,14 +20,13 @@ type Props = {
 
 export function Screen({ bg, children, fixed, bottomSpace = 24, footer, contentStyle }: Props) {
   const inset = useSafeAreaInsets();
-  const g = backgrounds[bg];
   const pad = { paddingTop: inset.top + 14, paddingBottom: inset.bottom + bottomSpace };
   const target = useRef<ComponentRef<typeof View> | null>(null);
   return (
     <BlurTargetContext.Provider value={target}>
     <View style={styles.root}>
       <BlurTargetView ref={target} style={StyleSheet.absoluteFill}>
-      <LinearGradient colors={g.colors} locations={g.locations} style={StyleSheet.absoluteFill} />
+      <Backdrop name={bg} />
       {fixed ? (
         <View style={[styles.fixed, pad]}>
           <View style={[styles.inner, styles.grow, contentStyle]}>{children}</View>

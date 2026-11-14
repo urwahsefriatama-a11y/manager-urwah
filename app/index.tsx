@@ -1,6 +1,6 @@
 // Beranda: salam, lintasan waktu shalat, pengingat berikutnya, fitur penting, tugas, alarm.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import { Screen } from '../src/ui/Screen';
 import { T } from '../src/ui/T';
@@ -13,8 +13,9 @@ import { FadeIn, Label, RoundBtn } from '../src/ui/bits';
 import { AlarmRow, ProgressRing, TaskRow } from '../src/ui/lists';
 import { AddAlarmSheet, AddTaskSheet } from '../src/ui/forms';
 import { useToast } from '../src/ui/Toast';
-import { color, radius } from '../src/ui/theme';
-import { listTasks, toggleTask, deleteTask, type Task } from '../src/data/tasks';
+import { color, font, radius } from '../src/ui/theme';
+import { island, mirrorLive, clearLive } from '../src/lib/island';
+import { listTasks, toggleTask, deleteTask, pendingDrafts, type Task } from '../src/data/tasks';
 import { deleteAlarm, listAlarms, setAlarmEnabled, type Alarm } from '../src/data/alarms';
 import { lastRecording } from '../src/data/recordings';
 import { getFlag, getSetting } from '../src/data/settings';
@@ -30,6 +31,8 @@ export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const [menu, setMenu] = useState(false);
+  const [q, setQ] = useState('');
+  const [drafts, setDrafts] = useState({ count: 0, recordingId: null as string | null });
   const [addTask, setAddTask] = useState(false);
   const [addAlarm, setAddAlarm] = useState(false);
   const [lastRecTitle, setLastRecTitle] = useState<string | null>(null);
@@ -42,6 +45,7 @@ export default function Home() {
     setLastRecTitle(r ? r.title : null);
     setLastRecDur(r ? r.duration_sec : 0);
     setNow(Date.now());
+    setDrafts(pendingDrafts());
     updateWidget();
   }, []);
 
@@ -85,24 +89,62 @@ export default function Home() {
 
   const name = getSetting('name') || 'Urwah';
 
+  const askNow = () => {
+    const t = q.trim();
+    if (!t) return;
+    setQ('');
+    router.navigate({ pathname: '/asisten', params: { q: t, t: String(Date.now()) } });
+  };
+
+  // Tombol lonceng: tampilkan pulau + Live Update sistem untuk dicoba (hitung mundur 2 menit).
+  const demoIsland = () => {
+    const at = Date.now() + 2 * 60000;
+    const target = next ?? { title: 'Contoh pengingat', at };
+    island.show(
+      {
+        type: 'next',
+        pill: target.title,
+        right: hhmm(target.at),
+        kicker: 'Berikutnya',
+        title: target.title,
+        sub: `Pukul ${hhmm(target.at)} WIB · Live Update dikirim ke bilah status`,
+        pct: 35,
+        b: { label: 'Tugas', run: () => { island.setMode('pill'); router.navigate('/tugas'); } },
+      },
+      'open',
+      true,
+    );
+    mirrorLive('demo', { title: target.title, text: `Pukul ${hhmm(target.at)} WIB`, whenMs: target.at, countdown: true, shortText: hhmm(target.at), path: 'tugas' });
+    setTimeout(() => clearLive('demo'), Math.max(30000, target.at - Date.now() + 60000));
+  };
+
   return (
     <Screen
       bg="home"
       bottomSpace={96}
       footer={
-        <PressableScale accessibilityLabel="Tanya asisten" onPress={() => router.navigate('/asisten')} style={styles.composerWrap} depth={0.96}>
+        <View style={styles.composerWrap}>
           <GlassBlur style={styles.composer}>
-            <View style={styles.spark}>
-              <Icon name="spark" size={18} />
-            </View>
-            <T size={15} muted style={{ flex: 1 }} numberOfLines={1}>
-              Tanya asisten…
-            </T>
-            <View style={styles.mic}>
-              <Icon name="mic" size={20} color={color.ink} strokeWidth={2.2} />
-            </View>
+            <TextInput
+              value={q}
+              onChangeText={setQ}
+              placeholder="Tanya asisten…"
+              placeholderTextColor={color.faint}
+              style={styles.qInput}
+              returnKeyType="send"
+              onSubmitEditing={askNow}
+              maxFontSizeMultiplier={1.3}
+            />
+            {q.trim() ? (
+              <PressableScale accessibilityLabel="Kirim" onPress={askNow} style={styles.sendB}>
+                <Icon name="send" size={18} color={color.ink} strokeWidth={2.4} />
+              </PressableScale>
+            ) : null}
+            <PressableScale accessibilityLabel="Bicara ke asisten" onPress={() => router.navigate({ pathname: '/asisten', params: { mode: 'voice', t: String(Date.now()) } })} style={styles.mic}>
+              <Icon name="mic" size={20} color="#7A3412" strokeWidth={2.2} />
+            </PressableScale>
           </GlassBlur>
-        </PressableScale>
+        </View>
       }
     >
       <FadeIn>
@@ -118,7 +160,10 @@ export default function Home() {
               {`${greetingWord(now)}, semoga berkah`}
             </T>
           </View>
-          <RoundBtn icon="menu" label="Buka menu" onPress={() => setMenu(true)} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <RoundBtn icon="bell" label="Coba pulau notifikasi" onPress={demoIsland} />
+            <RoundBtn icon="menu" label="Buka menu" onPress={() => setMenu(true)} />
+          </View>
         </View>
       </FadeIn>
 
@@ -203,6 +248,30 @@ export default function Home() {
           ))}
         </ScrollView>
       </FadeIn>
+
+      {drafts.count > 0 ? (
+        <FadeIn delay={180}>
+          <Glass style={styles.sugCard}>
+            <T size={11} weight="heavy" style={{ letterSpacing: 1, color: color.accentSoft }}>
+              ASISTEN MENYARANKAN
+            </T>
+            <T size={15} weight="semibold" style={{ marginTop: 6, lineHeight: 21 }}>
+              {`Ada ${drafts.count} tugas dari rekaman yang belum Anda konfirmasi. Tinjau sekarang supaya bisa dipasang sebagai pengingat?`}
+            </T>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+              <PressableScale
+                accessibilityLabel="Tinjau tugas"
+                onPress={() => drafts.recordingId && router.navigate({ pathname: '/detail', params: { id: drafts.recordingId } })}
+                style={styles.sugYes}
+              >
+                <T size={13} weight="heavy" style={{ color: color.ink }}>
+                  Tinjau
+                </T>
+              </PressableScale>
+            </View>
+          </Glass>
+        </FadeIn>
+      ) : null}
 
       {getFlag('home_todo') ? (
         <FadeIn delay={300}>
@@ -297,7 +366,11 @@ const styles = StyleSheet.create({
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 8 },
   more: { paddingVertical: 12, alignItems: 'center' },
   composerWrap: { width: '100%', maxWidth: 560, borderRadius: radius.pill },
-  composer: { height: 58, borderRadius: radius.pill, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  composer: { height: 58, borderRadius: radius.pill, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  qInput: { flex: 1, height: 46, color: '#FFFFFF', fontFamily: font.semibold, fontSize: 15, paddingLeft: 14, paddingRight: 8 },
+  sendB: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   spark: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  mic: { width: 46, height: 46, borderRadius: radius.pill, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  sugCard: { marginTop: 12, borderRadius: 26, padding: 18, backgroundColor: 'rgba(26,6,0,0.3)' },
+  sugYes: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: '#FFFFFF' },
+  mic: { width: 46, height: 46, borderRadius: radius.pill, backgroundColor: '#FFE9D9', alignItems: 'center', justifyContent: 'center' },
 });

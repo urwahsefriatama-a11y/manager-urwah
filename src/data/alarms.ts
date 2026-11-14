@@ -4,6 +4,7 @@ import { db, newId } from './db';
 import { cancel, pendingIds, scheduleAt, scheduleDaily } from '../lib/notify';
 import { nextAtWib, pad } from '../lib/time';
 import { native } from '../../modules/urwah-native/src';
+import { getSetting } from './settings';
 
 export type Alarm = {
   id: string;
@@ -25,6 +26,7 @@ async function schedule(a: Pick<Alarm, 'id' | 'hour' | 'minute' | 'label' | 'rep
   const at = nextAtWib(a.hour, a.minute);
   if (native.available) {
     native.scheduleAlarm(a.id, at, title, a.label, a.repeat === 'daily');
+    if (getSetting('live_updates') !== '0') native.scheduleLive(a.id, at, a.label || title, 30);
     return `native:${at}`;
   }
   return a.repeat === 'daily' ? scheduleDaily(title, a.label, a.hour, a.minute) : scheduleAt(title, a.label, at);
@@ -34,6 +36,7 @@ async function unschedule(a: Pick<Alarm, 'id' | 'notif_id'>) {
   if (a.notif_id?.startsWith('native:')) {
     native.cancelAlarm(a.id);
     native.cancelAlarm(`${a.id}#snooze`);
+    native.cancelLive(a.id);
   } else await cancel(a.notif_id);
 }
 

@@ -46,11 +46,11 @@ export async function ensurePermission(): Promise<boolean> {
   }
 }
 
-export async function scheduleAt(title: string, body: string, atMs: number, channelId = CHANNEL): Promise<string | null> {
+export async function scheduleAt(title: string, body: string, atMs: number, channelId = CHANNEL, data?: Record<string, string>): Promise<string | null> {
   if (atMs <= Date.now() + 1000) return null;
   try {
     return await Notifications.scheduleNotificationAsync({
-      content: { title, body, sound: true },
+      content: { title, body, sound: true, ...(data ? { data } : {}) },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: atMs, channelId },
     });
   } catch {

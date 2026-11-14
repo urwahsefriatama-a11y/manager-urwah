@@ -72,8 +72,8 @@ export default function Chat() {
   };
 
   return (
-    <Screen bg="tasks">
-      <Header title="Chat WhatsApp" />
+    <Screen bg="chat">
+      <Header title="Chat terjadwal" icon="chat" />
 
       {rems.length ? (
         <FadeIn>
