@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/w_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/urwah_widget_bg"
+  android:orientation="vertical"
+  android:padding="16dp">
+  <TextView android:id="@+id/w_greet" android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:textColor="#CCFFFFFF" android:textSize="12sp" android:maxLines="1" />
+  <TextView android:id="@+id/w_next_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:layout_marginTop="6dp" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold"
+    android:maxLines="2" android:ellipsize="end" />
+  <TextView android:id="@+id/w_next_time" android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:textColor="#FFFFFF" android:textSize="30sp" android:fontFamily="sans-serif-light" />
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"
+    android:layout_marginTop="4dp">
+    <TextView android:id="@+id/w_prayer" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+      android:textColor="#E6FFE3C4" android:textSize="12sp" android:maxLines="1" />
+    <TextView android:id="@+id/w_tasks" android:layout_width="wrap_content" android:layout_height="wrap_content"
+      android:textColor="#CCFFFFFF" android:textSize="12sp" android:maxLines="1" />
+  </LinearLayout>
+</LinearLayout>
