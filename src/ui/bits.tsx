@@ -1,11 +1,12 @@
 // Komponen kecil yang dipakai bersama.
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Easing, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { router } from 'expo-router';
 import { Icon, type IconName } from './Icon';
 import { PressableScale } from './PressableScale';
 import { T } from './T';
-import { color, radius } from './theme';
+import { color, font, radius } from './theme';
+import { Glass } from './Glass';
 import { getSetting } from '../data/settings';
 
 export function reduceMotion() {
@@ -29,12 +30,17 @@ export function RoundBtn({ icon, label, onPress, size = 44, solid }: { icon: Ico
     <PressableScale
       accessibilityLabel={label}
       onPress={onPress}
-      style={[
-        styles.round,
-        { width: size, height: size, backgroundColor: solid ? '#FFFFFF' : 'rgba(255,255,255,0.16)' },
-      ]}
+      style={[styles.round, { width: size, height: size }]}
     >
-      <Icon name={icon} size={Math.round(size * 0.45)} color={solid ? color.ink : '#FFFFFF'} strokeWidth={2.2} />
+      {solid ? (
+        <View style={[styles.roundIn, { backgroundColor: '#FFFFFF' }]}>
+          <Icon name={icon} size={Math.round(size * 0.45)} color={color.ink} strokeWidth={2.2} />
+        </View>
+      ) : (
+        <Glass style={[styles.roundIn, { borderRadius: size / 2 }]}>
+          <Icon name={icon} size={Math.round(size * 0.45)} color="#FFFFFF" strokeWidth={2.2} />
+        </Glass>
+      )}
     </PressableScale>
   );
 }
@@ -110,8 +116,75 @@ export function PrimaryBtn({ label, onPress, disabled }: { label: string; onPres
   );
 }
 
+/** Kolom isian kaca. */
+export function Field(props: TextInputProps) {
+  return (
+    <TextInput
+      placeholderTextColor={color.faint}
+      maxFontSizeMultiplier={1.3}
+      {...props}
+      style={[styles.field, props.multiline ? styles.fieldMulti : null, props.style]}
+    />
+  );
+}
+
+/** Tombol kedua (kaca) dengan ikon opsional. */
+export function GhostBtn({ label, icon, onPress, disabled }: { label: string; icon?: IconName; onPress: () => void; disabled?: boolean }) {
+  return (
+    <PressableScale accessibilityLabel={label} onPress={onPress} disabled={disabled} style={styles.ghost}>
+      <Glass style={styles.ghostIn}>
+        {icon ? <Icon name={icon} size={18} strokeWidth={2.2} /> : null}
+        <T size={14} weight="bold">
+          {label}
+        </T>
+      </Glass>
+    </PressableScale>
+  );
+}
+
+/** Ikon di dalam kotak kaca, selalu tepat di tengah. */
+export function IconTile({ icon, size = 46, iconSize, tint }: { icon: IconName; size?: number; iconSize?: number; tint?: string }) {
+  return (
+    <Glass style={{ width: size, height: size, borderRadius: Math.round(size * 0.34), alignItems: 'center', justifyContent: 'center' }}>
+      <Icon name={icon} size={iconSize ?? Math.round(size * 0.48)} color={tint ?? '#FFFFFF'} strokeWidth={2.1} />
+    </Glass>
+  );
+}
+
+/** Kosong: pesan ramah saat daftar belum ada isinya. */
+export function Empty({ icon, text }: { icon: IconName; text: string }) {
+  return (
+    <View style={styles.empty}>
+      <IconTile icon={icon} size={56} />
+      <T muted size={14} style={{ textAlign: 'center', marginTop: 12 }}>
+        {text}
+      </T>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  round: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  field: {
+    minHeight: 52,
+    borderRadius: radius.md,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#FFFFFF',
+    fontFamily: font.semibold,
+    fontSize: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.30)',
+    borderLeftColor: 'rgba(255,255,255,0.20)',
+    borderRightColor: 'rgba(255,255,255,0.10)',
+    borderBottomColor: 'rgba(255,255,255,0.14)',
+  },
+  fieldMulti: { minHeight: 120, textAlignVertical: 'top' },
+  ghost: { borderRadius: radius.pill },
+  ghostIn: { height: 48, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 18 },
+  empty: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20 },
+  round: { borderRadius: radius.pill },
+  roundIn: { flex: 1, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
   headerTitle: { flex: 1 },
   headerRight: { minWidth: 44, alignItems: 'flex-end' },

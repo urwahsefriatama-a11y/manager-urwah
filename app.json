@@ -2,18 +2,20 @@
   "expo": {
     "name": "Manager Urwah",
     "slug": "manager-urwah",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "scheme": "managerurwah",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
       "package": "com.urwah.manager",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.WAKE_LOCK"
       ],
       "blockedPermissions": [
         "android.permission.ACCESS_BACKGROUND_LOCATION"
@@ -53,6 +55,19 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Lokasi dipakai untuk menghitung waktu shalat di tempat Anda."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kamera dipakai untuk memotret dokumen yang ingin dipindai.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Kalender dipakai untuk menyalin tugas berjam sebagai pengingat."
         }
       ]
     ],

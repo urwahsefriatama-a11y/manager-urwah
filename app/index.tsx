@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import { Screen } from '../src/ui/Screen';
 import { T } from '../src/ui/T';
-import { Glass } from '../src/ui/Glass';
+import { Glass, GlassBlur } from '../src/ui/Glass';
 import { Icon, type IconName } from '../src/ui/Icon';
 import { PressableScale } from '../src/ui/PressableScale';
 import { MenuSheet } from '../src/ui/MenuSheet';
@@ -19,9 +19,10 @@ import { deleteAlarm, listAlarms, setAlarmEnabled, type Alarm } from '../src/dat
 import { lastRecording } from '../src/data/recordings';
 import { getFlag, getSetting } from '../src/data/settings';
 import { fivePrayers, nextPrayer, currentPlace } from '../src/lib/prayer';
+import { updateWidget } from '../src/lib/widget';
 import { duration, greetingWord, hhmm, longDate, nextAtWib, pad, untilText } from '../src/lib/time';
 
-type Card = { label: string; value: string; icon: IconName; href: Href; hot?: boolean; soon?: boolean };
+type Card = { label: string; value: string; icon: IconName; href: Href; hot?: boolean };
 
 export default function Home() {
   const toast = useToast();
@@ -41,6 +42,7 @@ export default function Home() {
     setLastRecTitle(r ? r.title : null);
     setLastRecDur(r ? r.duration_sec : 0);
     setNow(Date.now());
+    updateWidget();
   }, []);
 
   useFocusEffect(reload);
@@ -70,13 +72,15 @@ export default function Home() {
 
   const cards: Card[] = [
     { label: 'Mulai rekam', value: 'REC', icon: 'rec', href: '/rekam', hot: true },
+    { label: 'Asisten AI', value: 'TANYA', icon: 'spark', href: '/asisten' },
     { label: 'Tugas hari ini', value: `${done}/${tasks.length}`, icon: 'task', href: '/tugas' },
     { label: 'Alarm berikutnya', value: nextAlarm ? hhmm(nextAlarm.at) : '--:--', icon: 'alarm', href: '/tugas' },
     { label: `Shalat ${np.name}`, value: hhmm(np.at), icon: 'shalat', href: '/shalat' },
     { label: lastRecTitle ?? 'Belum ada rekaman', value: lastRecTitle ? duration(lastRecDur) : '00:00', icon: 'file', href: '/rekaman' },
-    { label: 'Asisten AI', value: 'v0.3', icon: 'ask', href: '/segera?fitur=asisten', soon: true },
-    { label: 'Chat WA terjadwal', value: 'v0.4', icon: 'chat', href: '/segera?fitur=chat', soon: true },
-    { label: 'Pindai dokumen', value: 'v0.4', icon: 'scan', href: '/segera?fitur=pindai', soon: true },
+    { label: 'Arah kiblat', value: 'QIBLA', icon: 'compass', href: '/kiblat' },
+    { label: 'Chat WhatsApp', value: 'WA', icon: 'chat', href: '/chat' },
+    { label: 'Pindai dokumen', value: 'SCAN', icon: 'scan', href: '/pindai' },
+    { label: 'Catatan', value: 'NOTE', icon: 'note', href: '/catatan' },
   ];
 
   const name = getSetting('name') || 'Urwah';
@@ -86,18 +90,18 @@ export default function Home() {
       bg="home"
       bottomSpace={96}
       footer={
-        <PressableScale accessibilityLabel="Tanya asisten, hadir di versi 0.3" onPress={() => router.navigate('/segera?fitur=asisten')} style={styles.composer}>
-          <T size={15} muted style={{ flex: 1, paddingLeft: 14 }} numberOfLines={1}>
-            Tanya asisten…
-          </T>
-          <View style={styles.soonPill}>
-            <T size={11} weight="heavy" style={{ color: color.ink }}>
-              v0.3
+        <PressableScale accessibilityLabel="Tanya asisten" onPress={() => router.navigate('/asisten')} style={styles.composerWrap} depth={0.96}>
+          <GlassBlur style={styles.composer}>
+            <View style={styles.spark}>
+              <Icon name="spark" size={18} />
+            </View>
+            <T size={15} muted style={{ flex: 1 }} numberOfLines={1}>
+              Tanya asisten…
             </T>
-          </View>
-          <View style={styles.mic}>
-            <Icon name="mic" size={20} color="#7A3412" strokeWidth={2.2} />
-          </View>
+            <View style={styles.mic}>
+              <Icon name="mic" size={20} color={color.ink} strokeWidth={2.2} />
+            </View>
+          </GlassBlur>
         </PressableScale>
       }
     >
@@ -169,16 +173,32 @@ export default function Home() {
       <FadeIn delay={240}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cardsScroll} contentContainerStyle={styles.cards}>
           {cards.map((c) => (
-            <PressableScale key={c.label} accessibilityLabel={c.soon ? `${c.label}, segera hadir ${c.value}` : c.label} onPress={() => router.navigate(c.href)} style={[styles.card, c.hot ? styles.cardHot : null]}>
-              <View style={[styles.cardIcon, c.hot ? styles.cardIconHot : null]}>
-                <Icon name={c.icon} size={22} color={c.hot ? '#FFFFFF' : '#FFFFFF'} />
-              </View>
-              <T pixel size={22} numberOfLines={1} maxFontSizeMultiplier={1} style={[{ marginTop: 'auto' }, c.hot ? { color: color.ink } : null, c.soon ? { color: color.faint } : null]}>
-                {c.value}
-              </T>
-              <T size={12.5} weight="semibold" numberOfLines={2} style={[{ marginTop: 3 }, c.hot ? { color: 'rgba(26,10,4,0.7)' } : { color: color.muted }]}>
-                {c.label}
-              </T>
+            <PressableScale key={c.label} accessibilityLabel={c.label} onPress={() => router.navigate(c.href)} style={styles.cardWrap}>
+              {c.hot ? (
+                <View style={[styles.card, styles.cardHot]}>
+                  <View style={[styles.cardIcon, styles.cardIconHot]}>
+                    <Icon name={c.icon} size={22} color="#FFFFFF" />
+                  </View>
+                  <T pixel size={22} numberOfLines={1} maxFontSizeMultiplier={1} style={{ marginTop: 'auto', color: color.ink }}>
+                    {c.value}
+                  </T>
+                  <T size={12.5} weight="semibold" numberOfLines={2} style={{ marginTop: 3, color: 'rgba(26,10,4,0.7)' }}>
+                    {c.label}
+                  </T>
+                </View>
+              ) : (
+                <Glass style={styles.card}>
+                  <Glass strong style={styles.cardIcon}>
+                    <Icon name={c.icon} size={22} color="#FFFFFF" />
+                  </Glass>
+                  <T pixel size={22} numberOfLines={1} maxFontSizeMultiplier={1} style={{ marginTop: 'auto' }}>
+                    {c.value}
+                  </T>
+                  <T size={12.5} weight="semibold" numberOfLines={2} style={{ marginTop: 3, color: color.muted }}>
+                    {c.label}
+                  </T>
+                </Glass>
+              )}
             </PressableScale>
           ))}
         </ScrollView>
@@ -268,41 +288,16 @@ const styles = StyleSheet.create({
   rule: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   cardsScroll: { marginTop: 22, marginHorizontal: -20 },
   cards: { paddingHorizontal: 20, gap: 10 },
-  card: {
-    width: 132,
-    height: 132,
-    padding: 14,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(40,10,2,0.32)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-  },
-  cardHot: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
-  cardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
+  cardWrap: { width: 132, height: 132, borderRadius: radius.md },
+  card: { flex: 1, padding: 14, borderRadius: radius.md, backgroundColor: 'rgba(40,10,2,0.22)' },
+  cardHot: { backgroundColor: '#FFFFFF' },
+  cardIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   cardIconHot: { backgroundColor: '#2A1208' },
   section: { marginTop: 14, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 8 },
   more: { paddingVertical: 12, alignItems: 'center' },
-  composer: {
-    width: '100%',
-    maxWidth: 560,
-    height: 56,
-    borderRadius: radius.pill,
-    paddingHorizontal: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(24,8,4,0.86)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-  },
-  soonPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.85)' },
-  mic: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: '#FFEBDD', alignItems: 'center', justifyContent: 'center' },
+  composerWrap: { width: '100%', maxWidth: 560, borderRadius: radius.pill },
+  composer: { height: 58, borderRadius: radius.pill, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  spark: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  mic: { width: 46, height: 46, borderRadius: radius.pill, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
 });

@@ -9,6 +9,7 @@ import { FadeIn, Header, Label, RoundBtn } from '../src/ui/bits';
 import { AlarmRow, ProgressRing, TaskRow } from '../src/ui/lists';
 import { AddAlarmSheet, AddTaskSheet } from '../src/ui/forms';
 import { useToast } from '../src/ui/Toast';
+import { updateWidget } from '../src/lib/widget';
 import { deleteTask, listTasks, toggleTask, type Task } from '../src/data/tasks';
 import { deleteAlarm, listAlarms, setAlarmEnabled, type Alarm } from '../src/data/alarms';
 import { pad } from '../src/lib/time';
@@ -23,6 +24,7 @@ export default function Tugas() {
   const reload = useCallback(() => {
     setTasks(listTasks());
     setAlarms(listAlarms());
+    updateWidget();
   }, []);
   useFocusEffect(reload);
 

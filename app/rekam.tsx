@@ -30,7 +30,16 @@ type Phase = 'ready' | 'count' | 'live' | 'saving';
 
 export default function Rekam() {
   const toast = useToast();
-  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, directory: 'document', isMeteringEnabled: true });
+  const recorder = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    // AAC (ADTS) mono: ringan & langsung didukung Gemini (audio/aac).
+    extension: '.aac',
+    numberOfChannels: 1,
+    bitRate: 96000,
+    android: { outputFormat: 'aac_adts', audioEncoder: 'aac' },
+    directory: 'document',
+    isMeteringEnabled: true,
+  });
   const state = useAudioRecorderState(recorder, 180);
   const [phase, setPhase] = useState<Phase>('ready');
   const [template, setTemplate] = useState('Rapat');
@@ -46,7 +55,7 @@ export default function Rekam() {
   const breath = useRef(new Animated.Value(0)).current;
 
   const elapsedMs = doneMs.current + (state.durationMillis ?? 0);
-  const meter = (state as unknown as { metering?: number }).metering;
+  const meter = state.metering;
   const level = phase === 'live' && !paused ? (typeof meter === 'number' ? Math.min(1, Math.max(0, (meter + 55) / 55)) : 0.35) : 0;
 
   // Bola bernapas pelan saat siap; saat merekam ikut suara.
@@ -138,7 +147,7 @@ export default function Rekam() {
       finishRecording(recId.current, (doneMs.current + len) / 1000);
       success();
       toast('Rekaman disimpan.');
-      router.replace('/rekaman');
+      router.replace({ pathname: '/detail', params: { id: recId.current } });
     } catch (e) {
       setPhase('live');
       Alert.alert('Gagal menyimpan', e instanceof Error ? e.message : String(e));

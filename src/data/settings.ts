@@ -15,6 +15,11 @@ const DEFAULTS: Record<string, string> = {
   loc_lon: '106.8456',
   loc_name: 'Jakarta',
   loc_auto: '1',
+  // Lapis 3 pengingat: salin tugas berjam ke kalender HP.
+  cal_sync: '0',
+  // Sapaan asisten bila app tidak dibuka seharian.
+  nudge: '1',
+  nudge_id: '',
 };
 
 const cache = new Map<string, string>();

@@ -1,4 +1,4 @@
-// Daftar rekaman + putar ulang per potongan. Transkrip & ringkasan AI hadir di versi 0.3.
+// Daftar rekaman + putar ulang per potongan. Buka detail untuk transkrip, pembicara, ringkasan & tugas AI.
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -108,7 +108,7 @@ export default function Rekaman() {
               Belum ada rekaman
             </T>
             <T size={14} muted style={{ marginTop: 6, textAlign: 'center', lineHeight: 20 }}>
-              Rekam rapat atau kajian. Transkrip, pembicara, dan ringkasan AI hadir di versi 0.3.
+              Rekam rapat atau kajian, lalu jadikan transkrip, pembicara, ringkasan, dan tugas dengan AI.
             </T>
             <View style={{ width: '100%', marginTop: 18 }}>
               <PrimaryBtn label="Mulai rekam" onPress={() => router.navigate('/rekam')} />
@@ -159,11 +159,12 @@ export default function Rekaman() {
                   )}
                   {playing ? <Player key={playing.id} chunk={playing} onClose={() => setPlaying(null)} /> : null}
                   <View style={styles.actions}>
-                    <View style={styles.soon}>
-                      <T size={12} weight="bold" muted>
-                        Transkrip & ringkasan AI · v0.3
+                    <PressableScale accessibilityLabel="Buka transkrip dan ringkasan" onPress={() => router.navigate({ pathname: '/detail', params: { id: r.id } })} style={styles.soon}>
+                      <Icon name="spark" size={14} color={color.ink} />
+                      <T size={13} weight="heavy" style={{ color: color.ink }}>
+                        {r.status === 'ready' ? 'Transkrip & ringkasan' : 'Buka'}
                       </T>
-                    </View>
+                    </PressableScale>
                     <PressableScale accessibilityLabel="Hapus rekaman" onPress={() => remove(r)} style={styles.del}>
                       <Icon name="trash" size={16} color={color.danger} />
                     </PressableScale>
@@ -190,6 +191,6 @@ const styles = StyleSheet.create({
   track: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', marginTop: 6, overflow: 'hidden' },
   fill: { height: 4, backgroundColor: '#FFFFFF' },
   actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
-  soon: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.08)' },
+  soon: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: '#FFFFFF' },
   del: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(242,163,154,0.14)', alignItems: 'center', justifyContent: 'center' },
 });

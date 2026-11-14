@@ -4,7 +4,7 @@ import * as SQLite from 'expo-sqlite';
 
 export const db = SQLite.openDatabaseSync('manager-urwah.db');
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export function initDb() {
   db.execSync('PRAGMA journal_mode = WAL;');
@@ -76,10 +76,94 @@ export function initDb() {
       CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(status, due_at);
     `);
   }
+  if (current < 2) {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS speakers (
+        id TEXT PRIMARY KEY NOT NULL,
+        recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+        label TEXT NOT NULL,
+        display_name TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS segments (
+        id TEXT PRIMARY KEY NOT NULL,
+        recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+        speaker_id TEXT,
+        start_ms INTEGER NOT NULL,
+        end_ms INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        lang TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS qa (
+        id TEXT PRIMARY KEY NOT NULL,
+        recording_id TEXT,
+        question TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        sources_json TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS glossary (
+        id TEXT PRIMARY KEY NOT NULL,
+        term TEXT NOT NULL,
+        note TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY NOT NULL,
+        role TEXT NOT NULL,
+        text TEXT NOT NULL,
+        attachments_json TEXT,
+        actions_json TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS notes (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        analysis_md TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS wa_templates (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS wa_reminders (
+        id TEXT PRIMARY KEY NOT NULL,
+        contact_name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        body TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'scheduled',
+        notif_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_segments_rec ON segments(recording_id, start_ms);
+    `);
+    const now = Date.now();
+    const seed = [
+      ['tpl_donatur', 'Follow-up donatur', "Assalamu'alaikum {nama}, semoga sehat selalu. Kami ingin mengabarkan program terbaru yayasan. Boleh kami telepon {tanggal}?"],
+      ['tpl_rapat', 'Undangan rapat', "Assalamu'alaikum {nama}. Mengundang rapat {tanggal} pukul {waktu}. Mohon konfirmasi kehadiran. Jazakallah khair."],
+      ['tpl_terima', 'Terima kasih', 'Jazakallah khair {nama} atas dukungannya. Semoga Allah membalas dengan kebaikan.'],
+    ];
+    for (const t of seed) db.runSync('INSERT OR IGNORE INTO wa_templates (id, name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [t[0], t[1], t[2], now, now]);
+  }
   if (current < SCHEMA_VERSION) db.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 
   // Rekaman yang terputus (app ditutup paksa saat merekam) ditandai, tidak hilang.
   db.runSync("UPDATE recordings SET status = 'error', updated_at = ? WHERE status = 'recording'", [Date.now()]);
+  // Proses AI yang terputus bisa diulang dari layar detail.
+  db.runSync("UPDATE recordings SET status = 'ready', updated_at = ? WHERE status = 'processing'", [Date.now()]);
 }
 
 export function newId(prefix: string) {

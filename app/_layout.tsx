@@ -7,6 +7,8 @@ import { initDb } from '../src/data/db';
 import { syncOnceAlarms } from '../src/data/alarms';
 import { setupNotifications } from '../src/lib/notify';
 import { refreshLocation, schedulePrayerReminders } from '../src/lib/prayer';
+import { rescheduleNudge } from '../src/lib/nudge';
+import { updateWidget } from '../src/lib/widget';
 import { ToastProvider } from '../src/ui/Toast';
 import { T } from '../src/ui/T';
 
@@ -31,6 +33,8 @@ export default function RootLayout() {
         await syncOnceAlarms();
         await refreshLocation();
         await schedulePrayerReminders();
+        await rescheduleNudge();
+        updateWidget();
       } catch {
         // Diabaikan: app tetap bisa dipakai.
       }
@@ -58,7 +62,9 @@ export default function RootLayout() {
             animationDuration: 260,
             contentStyle: { backgroundColor: '#0A0505' },
           }}
-        />
+        >
+          <Stack.Screen name="alarm" options={{ animation: 'fade', gestureEnabled: false }} />
+        </Stack>
       </ToastProvider>
     </SafeAreaProvider>
   );

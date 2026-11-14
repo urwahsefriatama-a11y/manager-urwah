@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from './Icon';
 import { PressableScale } from './PressableScale';
 import { T } from './T';
+import { Glass, GlassLayers } from './Glass';
 import { color, MAX_CONTENT_WIDTH, radius } from './theme';
 
 const ITEMS: { label: string; icon: IconName; href: Href }[] = [
@@ -14,10 +15,11 @@ const ITEMS: { label: string; icon: IconName; href: Href }[] = [
   { label: 'Rekaman', icon: 'file', href: '/rekaman' },
   { label: 'Tugas', icon: 'task', href: '/tugas' },
   { label: 'Shalat', icon: 'shalat', href: '/shalat' },
-  { label: 'Asisten', icon: 'ask', href: '/segera?fitur=asisten' },
-  { label: 'Chat WA', icon: 'chat', href: '/segera?fitur=chat' },
-  { label: 'Pindai', icon: 'scan', href: '/segera?fitur=pindai' },
-  { label: 'Catatan', icon: 'note', href: '/segera?fitur=catatan' },
+  { label: 'Asisten', icon: 'spark', href: '/asisten' },
+  { label: 'Kiblat', icon: 'compass', href: '/kiblat' },
+  { label: 'Chat WA', icon: 'chat', href: '/chat' },
+  { label: 'Pindai', icon: 'scan', href: '/pindai' },
+  { label: 'Catatan', icon: 'note', href: '/catatan' },
   { label: 'Pengaturan', icon: 'set', href: '/pengaturan' },
 ];
 
@@ -50,6 +52,7 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
       </Animated.View>
       <View pointerEvents="box-none" style={[styles.wrap, { paddingTop: inset.top + 6 }]}>
         <Animated.View style={[styles.panel, { opacity: v, transform: [{ translateX }, { translateY }, { scale }] }]}>
+          <GlassLayers r={radius.xl} dark />
           <View style={styles.top}>
             <T size={12} weight="heavy" muted style={{ letterSpacing: 1.2 }}>
               MENU
@@ -66,9 +69,9 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
                 onPress={() => close(() => router.navigate(it.href))}
                 style={styles.tile}
               >
-                <View style={styles.tileIcon}>
+                <Glass style={styles.tileIcon}>
                   <Icon name={it.icon} size={24} />
-                </View>
+                </Glass>
                 <T size={11} weight="semibold" numberOfLines={1} maxFontSizeMultiplier={1.1}>
                   {it.label}
                 </T>
@@ -92,6 +95,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     padding: 14,
+    overflow: 'hidden',
   },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 8, marginBottom: 8 },
   close: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
@@ -103,8 +107,5 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
   },
 });

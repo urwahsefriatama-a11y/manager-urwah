@@ -4,6 +4,7 @@ import { Animated, Easing, KeyboardAvoidingView, Modal, Platform, Pressable, Sty
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, MAX_CONTENT_WIDTH, radius } from './theme';
 import { T } from './T';
+import { GlassLayers } from './Glass';
 
 type Props = { open: boolean; onClose: () => void; title: string; children: ReactNode };
 
@@ -30,6 +31,7 @@ export function Sheet({ open, onClose, title, children }: Props) {
       </Animated.View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.wrap} pointerEvents="box-none">
         <Animated.View style={[styles.sheet, { paddingBottom: inset.bottom + 16, transform: [{ translateY }] }]}>
+          <GlassLayers r={radius.xl} dark />
           <View style={styles.grab} />
           <T size={17} weight="heavy" style={{ marginBottom: 14 }}>
             {title}
@@ -57,6 +59,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 10,
     marginBottom: 8,
+    overflow: 'hidden',
   },
   grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.3)', marginBottom: 12 },
 });

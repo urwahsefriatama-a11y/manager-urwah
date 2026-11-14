@@ -9,18 +9,24 @@ import { T } from '../src/ui/T';
 import { Glass } from '../src/ui/Glass';
 import { Icon, type IconName } from '../src/ui/Icon';
 import { PressableScale } from '../src/ui/PressableScale';
-import { FadeIn, Header, PrimaryBtn, Toggle } from '../src/ui/bits';
+import { Field, FadeIn, Header, IconTile, PrimaryBtn, Toggle } from '../src/ui/bits';
+import * as Calendar from 'expo-calendar/legacy';
+import { native } from '../modules/urwah-native/src';
+import { addTerm, deleteTerm, listTerms, type Term } from '../src/data/extra';
+import { rescheduleNudge } from '../src/lib/nudge';
 import { useToast } from '../src/ui/Toast';
 import { color, font, radius } from '../src/ui/theme';
 import { getFlag, getSetting, resetSettings, setFlag, setSetting } from '../src/data/settings';
 import { ensurePermission } from '../src/lib/notify';
 
-type Cat = 'tampilan' | 'beranda' | 'pengingat' | 'asisten' | 'data';
+type Cat = 'tampilan' | 'beranda' | 'pengingat' | 'asisten' | 'kamus' | 'widget' | 'data';
 const CATS: { key: Cat; label: string; desc: string; icon: IconName }[] = [
   { key: 'tampilan', label: 'Tampilan', desc: 'Nama, gerak, dan getar', icon: 'set' },
   { key: 'beranda', label: 'Beranda', desc: 'Bagian yang tampil di beranda', icon: 'home' },
   { key: 'pengingat', label: 'Pengingat & izin', desc: 'Notifikasi, alarm tepat waktu, baterai', icon: 'bell' },
   { key: 'asisten', label: 'Asisten & AI', desc: 'Kunci Gemini (disimpan terenkripsi)', icon: 'key' },
+  { key: 'kamus', label: 'Kamus istilah', desc: 'Nama & istilah agar transkrip tepat ejaannya', icon: 'book' },
+  { key: 'widget', label: 'Widget layar utama', desc: 'Pengingat & shalat langsung di layar HP', icon: 'wid' },
   { key: 'data', label: 'Data & versi', desc: 'Penyimpanan dan versi app', icon: 'file' },
 ];
 
@@ -44,7 +50,7 @@ function Row({ title, sub, right }: { title: string; sub?: string; right?: React
   );
 }
 
-function FlagRow({ k, title, sub }: { k: string; title: string; sub?: string }) {
+function FlagRow({ k, title, sub, before }: { k: string; title: string; sub?: string; before?: (v: boolean) => Promise<boolean> }) {
   const [on, setOn] = useState(getFlag(k));
   return (
     <Row
@@ -54,7 +60,8 @@ function FlagRow({ k, title, sub }: { k: string; title: string; sub?: string }) 
         <Toggle
           on={on}
           label={title}
-          onChange={(v) => {
+          onChange={async (v) => {
+            if (before && !(await before(v))) return;
             setFlag(k, v);
             setOn(v);
           }}
@@ -71,6 +78,11 @@ export default function Pengaturan() {
   const [key, setKey] = useState('');
   const [hasKey, setHasKey] = useState(false);
   const [notifOk, setNotifOk] = useState<boolean | null>(null);
+  const [exactOk, setExactOk] = useState(true);
+  const [fullOk, setFullOk] = useState(true);
+  const [terms, setTerms] = useState<Term[]>([]);
+  const [term, setTerm] = useState('');
+  const [termNote, setTermNote] = useState('');
 
   useEffect(() => {
     SecureStore.getItemAsync(GEMINI_KEY)
@@ -79,6 +91,9 @@ export default function Pengaturan() {
     Notifications.getPermissionsAsync()
       .then((p) => setNotifOk(p.granted))
       .catch(() => setNotifOk(null));
+    setExactOk(native.canScheduleExact());
+    setFullOk(native.canFullScreen());
+    setTerms(listTerms());
   }, [cat]);
 
   const current = CATS.find((c) => c.key === cat);
@@ -92,9 +107,7 @@ export default function Pengaturan() {
           <Glass style={{ paddingVertical: 4 }}>
             {CATS.map((c, i) => (
               <PressableScale key={c.key} accessibilityLabel={c.label} onPress={() => setCat(c.key)} style={[styles.catRow, i === 0 ? null : styles.divider]}>
-                <View style={styles.catIcon}>
-                  <Icon name={c.icon} size={22} />
-                </View>
+                <IconTile icon={c.icon} size={42} iconSize={21} />
                 <View style={{ flex: 1 }}>
                   <T size={15} weight="bold">
                     {c.label}
@@ -180,8 +193,50 @@ export default function Pengaturan() {
                   }
                 />
                 <Row
-                  title="Alarm & pengingat tepat waktu"
-                  sub="Android 12+ butuh izin ini agar bunyi tepat di menitnya. Bila pengingat terlambat, buka pengaturan app → Alarm & pengingat → izinkan."
+                  title="Alarm tepat waktu"
+                  sub={exactOk ? 'Diizinkan: alarm berbunyi tepat di menitnya.' : 'Belum diizinkan: alarm bisa terlambat beberapa menit.'}
+                  right={
+                    exactOk ? (
+                      <Icon name="check" size={20} color={color.ok} strokeWidth={2.6} />
+                    ) : (
+                      <T size={13} weight="bold" style={{ color: '#FFE3C4' }} accessibilityRole="button" onPress={() => native.openExactAlarmSettings()}>
+                        Izinkan
+                      </T>
+                    )
+                  }
+                />
+                <Row
+                  title="Alarm layar penuh"
+                  sub={fullOk ? 'Diizinkan: alarm tampil di atas layar kunci.' : 'Belum diizinkan: alarm hanya muncul sebagai notifikasi.'}
+                  right={
+                    fullOk ? (
+                      <Icon name="check" size={20} color={color.ok} strokeWidth={2.6} />
+                    ) : (
+                      <T size={13} weight="bold" style={{ color: '#FFE3C4' }} accessibilityRole="button" onPress={() => native.openFullScreenSettings()}>
+                        Izinkan
+                      </T>
+                    )
+                  }
+                />
+                <FlagRow
+                  k="cal_sync"
+                  title="Salin ke kalender HP"
+                  sub="Tugas berjam juga dibuat di kalender (ikut sinkron ke Google Calendar bila akun terhubung)."
+                  before={async (v) => {
+                    if (!v) return true;
+                    const p = await Calendar.requestCalendarPermissionsAsync();
+                    if (!p.granted) toast('Izin kalender belum diberikan.');
+                    return p.granted;
+                  }}
+                />
+                <FlagRow
+                  k="nudge"
+                  title="Sapaan asisten"
+                  sub="Bila seharian app tidak dibuka, asisten mengingatkan pukul 20.00."
+                  before={async () => {
+                    setTimeout(() => rescheduleNudge().catch(() => {}), 50);
+                    return true;
+                  }}
                 />
               </Glass>
               <Glass style={[styles.box, { marginTop: 12 }]}>
@@ -204,7 +259,7 @@ export default function Pengaturan() {
                 </T>
                 <T size={12} muted style={{ marginTop: 3, lineHeight: 17 }}>
                   {hasKey
-                    ? 'Tersimpan terenkripsi di HP ini. Dipakai mulai versi 0.3 (transkrip & asisten).'
+                    ? 'Tersimpan terenkripsi di HP ini. Dipakai untuk transkrip, asisten, catatan, dan pindai.'
                     : 'Belum ada. Buat gratis di Google AI Studio, lalu tempel di sini. Tidak pernah dikirim ke tempat lain selain Google.'}
                 </T>
                 <TextInput
@@ -249,10 +304,69 @@ export default function Pengaturan() {
             </Glass>
           ) : null}
 
+          {cat === 'kamus' ? (
+            <>
+              <Glass style={[styles.box, { paddingVertical: 14, gap: 10 }]}>
+                <Field value={term} onChangeText={setTerm} placeholder="Istilah, mis. Yayasan Al-Hikmah" />
+                <Field value={termNote} onChangeText={setTermNote} placeholder="Keterangan (opsional)" />
+                <PrimaryBtn
+                  label="Tambah istilah"
+                  disabled={!term.trim()}
+                  onPress={() => {
+                    addTerm(term, termNote);
+                    setTerm('');
+                    setTermNote('');
+                    setTerms(listTerms());
+                  }}
+                />
+              </Glass>
+              {terms.length ? (
+                <Glass style={[styles.box, { marginTop: 12 }]}>
+                  {terms.map((x, i) => (
+                    <View key={x.id} style={[styles.row, i === 0 ? { borderTopWidth: 0 } : null]}>
+                      <View style={{ flex: 1 }}>
+                        <T size={15} weight="bold">
+                          {x.term}
+                        </T>
+                        {x.note ? (
+                          <T size={12} muted>
+                            {x.note}
+                          </T>
+                        ) : null}
+                      </View>
+                      <PressableScale
+                        accessibilityLabel={`Hapus ${x.term}`}
+                        onPress={() => {
+                          deleteTerm(x.id);
+                          setTerms(listTerms());
+                        }}
+                        style={styles.smallDel}
+                      >
+                        <Icon name="trash" size={16} color={color.danger} />
+                      </PressableScale>
+                    </View>
+                  ))}
+                </Glass>
+              ) : null}
+            </>
+          ) : null}
+
+          {cat === 'widget' ? (
+            <Glass style={styles.box}>
+              <Row title="Isi widget" sub="Salam, pengingat berikutnya + jamnya, shalat berikutnya, dan jumlah tugas selesai. Ketuk widget untuk membuka app." />
+              <Row
+                title="Cara memasang (Samsung)"
+                sub="Tekan lama layar utama → Widget → cari “Manager Urwah” → seret ke layar. Ukuran bisa diubah dengan menekan lama widget."
+              />
+              <Row title="Pembaruan" sub="Widget diperbarui setiap kali app dibuka atau tugas/alarm berubah." />
+              {!native.available ? <Row title="Tidak tersedia" sub="Modul widget tidak ditemukan di versi ini." /> : null}
+            </Glass>
+          ) : null}
+
           {cat === 'data' ? (
             <Glass style={styles.box}>
               <Row title="Semua data di HP ini" sub="Rekaman, tugas, alarm, dan pengaturan tidak dikirim ke server mana pun." />
-              <Row title="Cadangan Google Drive" sub="Opsional, hadir di versi berikutnya." />
+              <Row title="Cadangan Google Drive" sub="Opsional — hadir di versi 0.4." />
               <Row title="Versi app" right={<T pixel size={16}>{Constants.expoConfig?.version ?? '-'}</T>} />
               <View style={{ paddingVertical: 12 }}>
                 <PressableScale
@@ -280,7 +394,7 @@ export default function Pengaturan() {
 const styles = StyleSheet.create({
   catRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12 },
   divider: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' },
-  catIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  smallDel: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(242,163,154,0.14)', alignItems: 'center', justifyContent: 'center' },
   backPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 10, paddingRight: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.12)' },
   box: { paddingHorizontal: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' },

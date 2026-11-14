@@ -1,12 +1,12 @@
 // Jadwal shalat hari ini (dihitung di HP dari lokasi), plus pengingat tiap waktu shalat.
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { Linking, StyleSheet, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { Screen } from '../src/ui/Screen';
 import { T } from '../src/ui/T';
 import { Glass } from '../src/ui/Glass';
 import { PrayerArc } from '../src/ui/PrayerArc';
-import { FadeIn, Header, Label, Toggle } from '../src/ui/bits';
+import { FadeIn, GhostBtn, Header, Label, Toggle } from '../src/ui/bits';
 import { useToast } from '../src/ui/Toast';
 import { getFlag, setFlag } from '../src/data/settings';
 import { currentPlace, fivePrayers, nextPrayer, prayersFor, refreshLocation, schedulePrayerReminders } from '../src/lib/prayer';
@@ -114,8 +114,16 @@ export default function Shalat() {
             </T>
           </View>
         </Glass>
-        <T size={12} muted style={styles.note}>
-          Adzan penuh, arah kiblat, masjid terdekat, dan mode senyap otomatis hadir di versi berikutnya.
+        <View style={styles.btns}>
+          <View style={{ flex: 1 }}>
+            <GhostBtn label="Arah kiblat" icon="compass" onPress={() => router.navigate('/kiblat')} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <GhostBtn label="Masjid terdekat" icon="map" onPress={() => Linking.openURL(`https://www.google.com/maps/search/masjid/@${place.lat},${place.lon},15z`)} />
+          </View>
+        </View>
+        <T size={12} muted style={styles.note} onPress={() => router.navigate('/segera?fitur=adzan')}>
+          Adzan penuh & mode senyap otomatis hadir di versi 0.4 ›
         </T>
       </FadeIn>
     </Screen>
@@ -126,5 +134,6 @@ const styles = StyleSheet.create({
   hero: { marginTop: 14, padding: 18, alignItems: 'center' },
   list: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' },
+  btns: { flexDirection: 'row', gap: 10, marginTop: 14 },
   note: { textAlign: 'center', marginTop: 14, lineHeight: 18, paddingHorizontal: 10 },
 });

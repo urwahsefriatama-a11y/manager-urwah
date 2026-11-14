@@ -4,53 +4,40 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Screen } from '../src/ui/Screen';
 import { T } from '../src/ui/T';
 import { Glass } from '../src/ui/Glass';
-import { Icon, type IconName } from '../src/ui/Icon';
-import { FadeIn, Header, PrimaryBtn } from '../src/ui/bits';
+import { type IconName } from '../src/ui/Icon';
+import { FadeIn, Header, IconTile, PrimaryBtn } from '../src/ui/bits';
 import { radius } from '../src/ui/theme';
 
 const INFO: Record<string, { title: string; icon: IconName; version: string; points: string[] }> = {
-  asisten: {
-    title: 'Asisten AI',
-    icon: 'ask',
-    version: '0.3',
-    points: [
-      'Tanya apa saja: analisa masalah, saran, brainstorm, jawaban terstruktur',
-      'Bisa membaca PDF & Markdown yang Anda lampirkan',
-      'Minta diingatkan apa pun → langsung jadi alarm/pengingat',
-      'Mode suara: bicara, asisten mendengarkan',
-    ],
-  },
-  chat: {
-    title: 'Chat WA terjadwal',
-    icon: 'chat',
+  adzan: {
+    title: 'Adzan & mode senyap',
+    icon: 'shalat',
     version: '0.4',
-    points: ['Pengingat kirim chat ke beberapa orang', 'Template pesan buatan sendiri dengan {nama}, {tanggal}, {waktu}', 'Membuka WhatsApp dengan pesan siap kirim (Anda yang menekan kirim)'],
+    points: ['Suara adzan penuh di waktu shalat (pilih muadzin)', 'HP otomatis senyap selama shalat, lalu kembali normal', 'Saat ini: notifikasi pengingat setiap waktu shalat sudah aktif'],
   },
-  pindai: {
-    title: 'Pindai dokumen',
-    icon: 'scan',
+  backup: {
+    title: 'Cadangan Google Drive',
+    icon: 'file',
     version: '0.4',
-    points: ['Kamera mendeteksi tepi dokumen', 'Salin teks dari foto', 'Ekspor PDF / PNG'],
+    points: ['Opsional: masuk Google hanya bila Anda mau', 'Cadangkan database & rekaman ke Drive Anda sendiri', 'Pulihkan di HP baru'],
   },
-  catatan: {
-    title: 'Catatan + analisa',
-    icon: 'note',
+  live: {
+    title: 'Live Update',
+    icon: 'bell',
     version: '0.4',
-    points: ['Catatan cepat', 'Dianalisa AI: poin penting, risiko, tugas'],
+    points: ['Hitung mundur pengingat & rekaman di bilah status (Android 16)', 'Saat ini: alarm layar penuh & notifikasi pengingat sudah aktif'],
   },
 };
 
 export default function Segera() {
   const { fitur } = useLocalSearchParams<{ fitur?: string }>();
-  const info = INFO[fitur ?? ''] ?? INFO.asisten;
+  const info = INFO[fitur ?? ''] ?? INFO.adzan;
   return (
     <Screen bg="soon">
       <Header title={info.title} />
       <FadeIn>
         <Glass style={styles.card}>
-          <View style={styles.icon}>
-            <Icon name={info.icon} size={34} />
-          </View>
+          <IconTile icon={info.icon} size={70} iconSize={34} />
           <T size={22} weight="heavy" style={{ marginTop: 14, textAlign: 'center' }}>
             {info.title}
           </T>
@@ -83,7 +70,6 @@ export default function Segera() {
 
 const styles = StyleSheet.create({
   card: { padding: 22, alignItems: 'center' },
-  icon: { width: 70, height: 70, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
   badge: { marginTop: 10, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: '#FFFFFF' },
   point: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   bullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFFFFF', marginTop: 7 },

@@ -76,3 +76,15 @@ export function duration(sec: number) {
 }
 
 export { pad };
+
+/** "2026-11-14T09:35:00+07:00" */
+export function isoWib(ms = Date.now()) {
+  const d = wib(ms);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:00+07:00`;
+}
+
+/** "Sen, 16 Nov 09:00" */
+export function dayDateTime(ms: number) {
+  const d = wib(ms);
+  return `${DAYS[d.getUTCDay()].slice(0, 3)}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${hhmm(ms)}`;
+}
