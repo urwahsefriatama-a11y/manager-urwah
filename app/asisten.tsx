@@ -132,7 +132,15 @@ export default function Asisten() {
   const [atts, setAtts] = useState<Attachment[]>([]);
   const [busy, setBusy] = useState(false);
   const [voice, setVoice] = useState(false);
-  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
+  // AAC (ADTS) agar langsung dikenali Gemini.
+  const recorder = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    extension: '.aac',
+    numberOfChannels: 1,
+    bitRate: 64000,
+    android: { outputFormat: 'aac_adts', audioEncoder: 'aac' },
+    isMeteringEnabled: true,
+  });
   const recState = useAudioRecorderState(recorder, 120);
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -222,7 +230,7 @@ export default function Asisten() {
     const uri = recorder.uri;
     if (!sendIt || !uri) return;
     success();
-    send(text, [{ name: `Suara ${duration(Math.round(recState.durationMillis / 1000))}`, mime: mimeOf(uri, 'audio/mp4'), uri }]);
+    send(text, [{ name: `Suara ${duration(Math.round(recState.durationMillis / 1000))}`, mime: mimeOf(uri, 'audio/aac'), uri }]);
   };
 
   const onAction = async (msg: ChatMsg, i: number, a: AssistantAction, ok: boolean) => {

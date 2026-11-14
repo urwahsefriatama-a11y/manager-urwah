@@ -32,7 +32,7 @@ import {
 import { confirmDraft, dismissDraft } from '../src/data/tasks';
 import { askRecordings } from '../src/lib/ai';
 import { hasKey } from '../src/lib/gemini';
-import { processRecording, type Progress } from '../src/lib/process';
+import { isProcessing, processRecording, type Progress } from '../src/lib/process';
 import { ensurePermission } from '../src/lib/notify';
 import { dayDateTime, duration, hourOfDay, nextAtWib, shortDateTime, todayAtWib } from '../src/lib/time';
 import { success } from '../src/lib/haptics';
@@ -202,6 +202,15 @@ export default function Detail() {
       {progress ? (
         <FadeIn delay={40} style={{ marginTop: 18 }}>
           <Processing progress={progress} />
+        </FadeIn>
+      ) : id && isProcessing(id) ? (
+        <FadeIn delay={40} style={{ marginTop: 18 }}>
+          <Glass strong style={styles.cta}>
+            <Icon name="spark" size={30} color={color.accentSoft} />
+            <T size={15} weight="bold" style={{ marginTop: 10, textAlign: 'center' }}>
+              Rekaman ini sedang diproses di latar. Buka lagi beberapa saat lagi.
+            </T>
+          </Glass>
         </FadeIn>
       ) : !hasAi ? (
         <FadeIn delay={60} style={{ marginTop: 18 }}>

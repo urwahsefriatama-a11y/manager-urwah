@@ -25,7 +25,23 @@ function chunkState(chunkId: string) {
   return db.getFirstSync<{ status: string }>('SELECT status FROM chunks WHERE id = ?', [chunkId])?.status ?? 'pending';
 }
 
+const running = new Set<string>();
+
+export function isProcessing(recordingId: string) {
+  return running.has(recordingId);
+}
+
 export async function processRecording(recordingId: string, onProgress: (p: Progress) => void) {
+  if (running.has(recordingId)) throw new Error('Rekaman ini sedang diproses. Tunggu sampai selesai.');
+  running.add(recordingId);
+  try {
+    return await processInner(recordingId, onProgress);
+  } finally {
+    running.delete(recordingId);
+  }
+}
+
+async function processInner(recordingId: string, onProgress: (p: Progress) => void) {
   const rec = getRecording(recordingId);
   if (!rec) throw new Error('Rekaman tidak ditemukan.');
   const chunks = chunksOf(recordingId);
