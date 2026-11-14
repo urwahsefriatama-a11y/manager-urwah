@@ -122,8 +122,14 @@ class UrwahNativeModule : Module() {
     Function("setWidgetData") { json: String -> UrwahWidget.save(context, json) }
 
     // ---------- Live Update (pulau di luar app) ----------
-    Function("liveShow") { id: String, title: String, text: String, whenMs: Double, countdown: Boolean, progress: Int, shortText: String, timeoutMs: Double, path: String ->
-      LiveUpdates.show(context, id, title, text, whenMs.toLong(), countdown, progress, shortText, timeoutMs.toLong(), path)
+    // Satu parameter JSON (fungsi Expo maksimal 8 parameter).
+    Function("liveShow") { json: String ->
+      val o = org.json.JSONObject(json)
+      LiveUpdates.show(
+        context, o.getString("id"), o.optString("title"), o.optString("text"),
+        o.optDouble("whenMs", 0.0).toLong(), o.optBoolean("countdown", true), o.optInt("progress", -1),
+        o.optString("shortText"), o.optDouble("timeoutMs", 0.0).toLong(), o.optString("path")
+      )
     }
     Function("liveCancel") { id: String -> LiveUpdates.cancel(context, id) }
     Function("canPromote") { LiveUpdates.canPromote(context) }

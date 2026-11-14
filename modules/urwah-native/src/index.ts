@@ -15,7 +15,7 @@ type Native = {
   canFullScreen(): boolean;
   openFullScreenSettings(): void;
   showOverLock(on: boolean): void;
-  liveShow(id: string, title: string, text: string, whenMs: number, countdown: boolean, progress: number, shortText: string, timeoutMs: number, path: string): void;
+  liveShow(json: string): void;
   liveCancel(id: string): void;
   canPromote(): boolean;
   scheduleLive(id: string, atMs: number, title: string, leadMin: number): void;
@@ -57,7 +57,7 @@ export const native = {
   setWidgetData: (data: Record<string, string>) => mod?.setWidgetData(JSON.stringify(data)),
 
   liveShow: (o: { id: string; title: string; text: string; whenMs?: number; countdown?: boolean; progress?: number; shortText?: string; timeoutMs?: number; path?: string }) =>
-    mod?.liveShow(o.id, o.title, o.text, o.whenMs ?? 0, o.countdown ?? true, o.progress ?? -1, o.shortText ?? '', o.timeoutMs ?? 0, o.path ?? ''),
+    mod?.liveShow(JSON.stringify({ whenMs: 0, countdown: true, progress: -1, shortText: '', timeoutMs: 0, path: '', ...o })),
   liveCancel: (id: string) => mod?.liveCancel(id),
   canPromote: () => (mod ? mod.canPromote() : false),
   scheduleLive: (id: string, atMs: number, title: string, leadMin = 30) => mod?.scheduleLive(id, atMs, title, leadMin),
