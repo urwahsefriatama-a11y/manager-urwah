@@ -54,6 +54,15 @@ jobs:
           set -o pipefail
           ./gradlew assembleRelease --no-daemon 2>&1 | tail -n 400 | tee -a ../ci.log
 
+      - name: Cek modul native (alarm & widget) ikut terpasang
+        run: |
+          if grep -rlq "expo.modules.urwahnative.AlarmReceiver" android/app/build/intermediates; then
+            echo "Modul urwah-native: TERPASANG" | tee -a ci.log
+          else
+            echo "Modul urwah-native: TIDAK DITEMUKAN" | tee -a ci.log
+            exit 1
+          fi
+
       - name: Beri nama APK
         run: |
           VERSION=$(node -p "require('./app.json').expo.version")
