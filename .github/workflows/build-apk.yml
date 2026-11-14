@@ -56,7 +56,15 @@ jobs:
 
       - name: Cek modul native (alarm & widget) ikut terpasang
         run: |
-          if grep -rlq "expo.modules.urwahnative.AlarmReceiver" android/app/build/intermediates; then
+          echo "--- autolinking ---" | tee -a ci.log
+          npx expo-modules-autolinking resolve --platform android 2>&1 | grep -i -A3 "urwah" | tee -a ci.log || true
+          echo "--- manifest ---" | tee -a ci.log
+          find android/app/build -name AndroidManifest.xml -path "*merged*" 2>/dev/null | head -3 | tee -a ci.log
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          echo "APK: $APK" | tee -a ci.log
+          N=$(unzip -p "$APK" 'classes*.dex' | grep -a -c "urwahnative" || true)
+          echo "Jejak urwahnative di dex: $N" | tee -a ci.log
+          if [ "$N" -gt 0 ]; then
             echo "Modul urwah-native: TERPASANG" | tee -a ci.log
           else
             echo "Modul urwah-native: TIDAK DITEMUKAN" | tee -a ci.log
