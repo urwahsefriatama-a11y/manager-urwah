@@ -77,3 +77,14 @@ Tabel baru (tambahan, tidak mengganti nama tabel lama):
 Rilis bertahap: v0.2 (tampilan baru, rekam, tugas, alarm, shalat) → v0.3 (transkrip, ringkasan, asisten) → v0.4 (chat WA, pindai, catatan) → v0.5 (alarm layar penuh, widget, cadangan).
 
 Perangkat: Galaxy S25 Ultra didukung. Huawei MatePad Mini (HarmonyOS 5/6) tidak bisa memasang APK — butuh keputusan pemilik.
+
+## Pembaruan v0.3 (14 Nov 2026)
+Atas permintaan pemilik ("selesaikan semuanya"), rilis v0.3 menggabungkan rencana v0.3–v0.5:
+- Transkrip, pembicara, ringkasan, tugas (draft → disetujui), tanya rekaman · Asisten · Catatan · Chat WA · Pindai · Kiblat.
+- Alarm layar penuh & widget lewat modul native lokal `modules/urwah-native` (AlarmManager.setAlarmClock, BootReceiver, AppWidgetProvider).
+- Lapis 3 pengingat: kalender HP (opsional, `expo-calendar/legacy`), `calendar_event_id` di tabel `tasks`.
+
+Tabel baru (tambahan): `chat_messages`, `notes`, `wa_templates`, `wa_reminders` (selain `speakers`, `segments`, `qa`, `glossary` dari rancangan awal).
+
+Sisa untuk v0.4: adzan penuh & senyap otomatis, Live Update, cadangan Google Drive.
+Perangkat: hanya Galaxy S25 Ultra (pemilik memilih opsi A untuk MatePad Mini).
